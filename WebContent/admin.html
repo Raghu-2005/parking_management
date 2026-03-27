@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParkOS — Admin</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap"
+        rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        :root {
+            --bg: #0a0a0f;
+            --surface: #12121a;
+            --surface2: #16161f;
+            --border: #1e1e2e;
+            --accent: #00e5a0;
+            --accent2: #0077ff;
+            --warn: #ffaa00;
+            --error: #ff4466;
+            --danger: #ff4466;
+            --text: #e8e8f0;
+            --muted: #5a5a7a;
+            --mono: 'Space Mono', monospace;
+            --sans: 'Syne', sans-serif
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            min-height: 100vh
+        }
+
+        nav {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 18px
+        }
+
+        .nav-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent);
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px
+        }
+
+        .nav-brand span {
+            color: var(--accent)
+        }
+
+        .admin-badge {
+            font-family: var(--mono);
+            font-size: 10px;
+            background: rgba(255, 170, 0, 0.15);
+            color: var(--warn);
+            border: 1px solid rgba(255, 170, 0, 0.3);
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin-left: 8px
+        }
+
+        .btn-logout {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--error);
+            background: rgba(255, 68, 102, 0.1);
+            border: 1px solid rgba(255, 68, 102, 0.2);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 230px 1fr;
+            min-height: calc(100vh - 60px)
+        }
+
+        aside {
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 20px 12px
+        }
+
+        .nav-section {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 16px 12px 6px
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--muted);
+            transition: all 0.15s;
+            margin-bottom: 4px
+        }
+
+        .nav-item:hover {
+            background: var(--bg);
+            color: var(--text)
+        }
+
+        .nav-item.active {
+            background: rgba(0, 229, 160, 0.1);
+            color: var(--accent)
+        }
+
+        .nav-item .icon {
+            font-size: 16px;
+            width: 20px;
+            text-align: center
+        }
+
+        main {
+            padding: 28px;
+            overflow-y: auto
+        }
+
+        .page {
+            display: none;
+            animation: fadeIn 0.3s ease
+        }
+
+        .page.active {
+            display: block
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 800;
+            margin-bottom: 4px
+        }
+
+        .page-sub {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 28px
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px
+        }
+
+        .form-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px
+        }
+
+        .form-card h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px
+        }
+
+        .form-card p {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 20px
+        }
+
+        .field {
+            margin-bottom: 14px
+        }
+
+        .field label {
+            display: block;
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 6px
+        }
+
+        .field input,
+        .field select {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 10px 12px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s
+        }
+
+        .field input:focus,
+        .field select:focus {
+            border-color: var(--accent)
+        }
+
+        .field select option {
+            background: var(--bg)
+        }
+
+        .custom-type-input {
+            display: none;
+            margin-top: 8px;
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 10px 12px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 13px;
+            outline: none
+        }
+
+        .custom-type-input:focus {
+            border-color: var(--accent)
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 7px;
+            font-family: var(--sans);
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: opacity 0.2s
+        }
+
+        .btn:hover {
+            opacity: 0.85
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #0a0a0f
+        }
+
+        .btn-danger {
+            background: rgba(255, 68, 102, 0.15);
+            color: var(--error);
+            border: 1px solid rgba(255, 68, 102, 0.3)
+        }
+
+        .btn-warn {
+            background: rgba(255, 170, 0, 0.15);
+            color: var(--warn);
+            border: 1px solid rgba(255, 170, 0, 0.3)
+        }
+
+        .btn-full {
+            width: 100%;
+            margin-top: 4px
+        }
+
+        .result-box {
+            margin-top: 14px;
+            padding: 14px;
+            border-radius: 8px;
+            font-family: var(--mono);
+            font-size: 12px;
+            line-height: 1.8;
+            display: none
+        }
+
+        .result-box.success {
+            background: rgba(0, 229, 160, 0.08);
+            border: 1px solid rgba(0, 229, 160, 0.2);
+            color: var(--accent)
+        }
+
+        .result-box.error {
+            background: rgba(255, 68, 102, 0.08);
+            border: 1px solid rgba(255, 68, 102, 0.2);
+            color: var(--error)
+        }
+
+        .result-box.show {
+            display: block
+        }
+
+        .table-wrap {
+            overflow-x: auto
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px
+        }
+
+        th {
+            font-family: var(--mono);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--muted);
+            text-align: left;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border)
+        }
+
+        td {
+            padding: 11px 14px;
+            border-bottom: 1px solid rgba(30, 30, 46, 0.5);
+            font-family: var(--mono);
+            font-size: 12px
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02)
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 700
+        }
+
+        .badge-green {
+            background: rgba(0, 229, 160, 0.15);
+            color: var(--accent)
+        }
+
+        .badge-blue {
+            background: rgba(0, 119, 255, 0.15);
+            color: var(--accent2)
+        }
+
+        .badge-red {
+            background: rgba(255, 68, 102, 0.15);
+            color: var(--error)
+        }
+
+        .badge-warn {
+            background: rgba(255, 170, 0, 0.15);
+            color: var(--warn)
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--muted);
+            font-family: var(--mono);
+            font-size: 12px
+        }
+
+        .refresh-btn {
+            float: right;
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            background: none;
+            border: 1px solid var(--border);
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 16px
+        }
+
+        .refresh-btn:hover {
+            color: var(--accent);
+            border-color: var(--accent)
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px
+        }
+
+        .report-stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px
+        }
+
+        .report-stat {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center
+        }
+
+        .report-stat-label {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 1px
+        }
+
+        .report-stat-value {
+            font-size: 22px;
+            font-weight: 800
+        }
+    </style>
+</head>
+
+<body>
+    <nav>
+        <div class="nav-brand">
+            <div class="nav-icon">🅿</div>Park<span>OS</span>
+            <span class="admin-badge">ADMIN</span>
+        </div>
+        <div class="nav-right">
+            <button class="btn-logout" onclick="logout()">Sign out</button>
+        </div>
+    </nav>
+    <div class="layout">
+        <aside>
+            <div class="nav-section">Operations</div>
+            <div class="nav-item" onclick="showPage('entry',this)"><span class="icon">🚗</span> Vehicle Entry</div>
+            <div class="nav-item" onclick="showPage('exit',this)"><span class="icon">🚪</span> Vehicle Exit</div>
+            <div class="nav-section">Overview</div>
+            <div class="nav-item active" onclick="showPage('active',this)"><span class="icon">📍</span> Active Vehicles
+            </div>
+            <div class="nav-item" onclick="showPage('allhistory',this)"><span class="icon">📋</span> All History</div>
+            <div class="nav-section">Manage</div>
+            <div class="nav-item" onclick="showPage('floors',this)"><span class="icon">🏢</span> Floors</div>
+            <div class="nav-item" onclick="showPage('slots',this)"><span class="icon">🅿</span> Slots</div>
+            <div class="nav-item" onclick="showPage('partition',this)"><span class="icon">✂</span> Slot Partition</div>
+            <div class="nav-section">Admin</div>
+            <div class="nav-item" onclick="showPage('approvals',this)"><span class="icon">✅</span> Approvals</div>
+            <div class="nav-item" onclick="showPage('reports',this)"><span class="icon">📊</span> Floor Reports</div>
+            <div class="nav-item" onclick="showPage('users',this)"><span class="icon">👥</span> Users</div>
+        </aside>
+        <main>
+
+            <!-- ENTRY -->
+            <div class="page" id="page-entry">
+                <div class="page-title">Vehicle Entry</div>
+                <div class="form-card">
+                    <h3>Park a Vehicle</h3>
+                    <div class="form-row">
+                        <div class="field"><label>Number Plate *</label><input type="text" id="entry-plate"
+                                placeholder="TN01AB1234"></div>
+                        <div class="field">
+                            <label>Vehicle Type *</label>
+                            <select id="entry-type" onchange="handleTypeChange('entry-type','entry-type-custom')">
+                                <option value="">-- select --</option>
+                            </select>
+                            <input class="custom-type-input" id="entry-type-custom" placeholder="e.g. van, bus, ev">
+                        </div>
+                        <div class="field"><label>Floor (optional)</label><input type="number" id="entry-floor"
+                                placeholder="auto"></div>
+                        <div class="field"><label>Slot No (optional)</label><input type="number" id="entry-slot"
+                                placeholder="auto"></div>
+                    </div>
+                    <button class="btn btn-primary" onclick="doEntry()">🚗 Park Vehicle</button>
+                    <div class="result-box" id="entry-result"></div>
+                </div>
+            </div>
+
+            <!-- EXIT -->
+            <div class="page" id="page-exit">
+                <div class="page-title">Vehicle Exit</div>
+                <div class="form-card">
+                    <h3>Exit Vehicle</h3>
+                    <div class="form-row">
+                        <div class="field"><label>Number Plate *</label><input type="text" id="exit-plate"
+                                placeholder="TN01AB1234"></div>
+                    </div>
+                    <button class="btn btn-primary" onclick="doExit()">🚪 Process Exit</button>
+                    <div class="result-box" id="exit-result"></div>
+                </div>
+            </div>
+
+            <!-- ACTIVE VEHICLES -->
+            <div class="page active" id="page-active">
+                <div class="page-title">Active Vehicles</div>
+                <div class="form-card" style="margin-bottom:16px">
+                    <div
+                        style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:12px">
+                        <div class="field"><label>Number Plate</label><input type="text" id="af-plate"
+                                placeholder="e.g. TN01" oninput="filterActive()"></div>
+                        <div class="field">
+                            <label>Vehicle Type</label>
+                            <select id="af-type" onchange="filterActive()">
+                                <option value="">All Types</option>
+                            </select>
+                        </div>
+                        <div class="field"><label>Floor</label><input type="number" id="af-floor" placeholder="e.g. 1"
+                                min="1" oninput="filterActive()"></div>
+                        <div class="field"><label>Min Duration (mins)</label><input type="number" id="af-min-mins"
+                                placeholder="e.g. 60" min="0" oninput="filterActive()"></div>
+                    </div>
+                    <div style="display:flex;gap:8px">
+                        <button class="refresh-btn" style="margin:0" onclick="loadActive()">↻ Refresh</button>
+                        <button class="btn btn-warn" style="padding:6px 14px;font-size:12px"
+                            onclick="clearActiveFilters()">✕ Clear</button>
+                    </div>
+                </div>
+                <div id="active-summary" style="display:none;margin-bottom:12px">
+                    <div style="display:flex;gap:12px;flex-wrap:wrap">
+                        <div class="form-card" style="flex:1;min-width:140px;padding:12px;text-align:center">
+                            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">SHOWING</div>
+                            <div id="active-count" style="font-size:22px;font-weight:800;color:var(--accent)">0</div>
+                        </div>
+                        <div class="form-card" style="flex:1;min-width:140px;padding:12px;text-align:center">
+                            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">TOTAL ACTIVE</div>
+                            <div id="active-total" style="font-size:22px;font-weight:800;color:#4caf50">0</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-card">
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Plate</th>
+                                    <th>Type</th>
+                                    <th>Floor</th>
+                                    <th>Slot</th>
+                                    <th>Entry Time</th>
+                                    <th>Duration</th>
+                                </tr>
+                            </thead>
+                            <tbody id="active-tbody">
+                                <tr>
+                                    <td colspan="6" class="empty-state">Loading...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="active-pagination" style="display:none;margin-top:16px"></div>
+                </div>
+            </div>
+
+            <!-- ALL HISTORY -->
+            <div class="page" id="page-allhistory">
+                <div class="page-title">All History</div>
+                <div class="form-card" style="margin-bottom:16px">
+                    <div
+                        style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:12px">
+                        <div class="field"><label>Number Plate</label><input type="text" id="f-plate"
+                                placeholder="e.g. TN01"></div>
+                        <div class="field">
+                            <label>Vehicle Type</label>
+                            <select id="f-type">
+                                <option value="">All Types</option>
+                            </select>
+                        </div>
+                        <div class="field"><label>Floor</label><input type="number" id="f-floor" placeholder="e.g. 1"
+                                min="1" oninput="toggleSlotField()"></div>
+                        <div class="field" id="f-slot-field" style="display:none">
+                            <label>Slot <span style="color:var(--muted);font-size:11px">(floor required)</span></label>
+                            <input type="number" id="f-slot" placeholder="e.g. 3" min="1">
+                        </div>
+                        <div class="field"><label>Exit From</label><input type="datetime-local" id="f-from"></div>
+                        <div class="field"><label>Exit To</label><input type="datetime-local" id="f-to"></div>
+                        <div class="field"><label>Min Amount (₹)</label><input type="number" id="f-min-amount"
+                                placeholder="e.g. 100" min="0"></div>
+                        <div class="field"><label>Max Amount (₹)</label><input type="number" id="f-max-amount"
+                                placeholder="e.g. 500" min="0"></div>
+                        <div class="field"><label>Min Penalty (₹)</label><input type="number" id="f-min-penalty"
+                                placeholder="e.g. 50" min="0"></div>
+                        <div class="field"><label>Max Penalty (₹)</label><input type="number" id="f-max-penalty"
+                                placeholder="e.g. 300" min="0"></div>
+                        <div class="field">
+                            <label>Allowed Mins (slot type)</label>
+                            <select id="f-allowed-mins">
+                                <option value="">Any</option>
+                            </select>
+                        </div>
+                        <div class="field"><label>Min Total Mins</label><input type="number" id="f-min-total-mins"
+                                placeholder="e.g. 30" min="0"></div>
+                        <div class="field"><label>Max Total Mins</label><input type="number" id="f-max-total-mins"
+                                placeholder="e.g. 180" min="0"></div>
+                        <div class="field"><label>Min Extra Mins (overtime)</label><input type="number"
+                                id="f-min-extra-mins" placeholder="e.g. 10" min="0"></div>
+                        <div class="field" style="display:flex;align-items:flex-end;gap:8px">
+                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                                <input type="checkbox" id="f-penalty-only" style="width:16px;height:16px"> Penalty Only
+                            </label>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+                        <button class="btn btn-primary" style="padding:6px 14px;font-size:12px"
+                            onclick="setPreset('today')">Today</button>
+                        <button class="btn btn-primary" style="padding:6px 14px;font-size:12px"
+                            onclick="setPreset('week')">This Week</button>
+                        <button class="btn btn-primary" style="padding:6px 14px;font-size:12px"
+                            onclick="setPreset('month')">This Month</button>
+                        <button class="btn btn-warn" style="padding:6px 14px;font-size:12px" onclick="clearFilters()">✕
+                            Clear</button>
+                    </div>
+                    <div style="display:flex;gap:8px">
+                        <button class="btn btn-primary" onclick="searchHistory()">🔍 Search</button>
+                        <button class="refresh-btn" style="margin:0" onclick="loadAllHistory(true)">↻ All
+                            Records</button>
+                    </div>
+                </div>
+                <div id="hist-summary" style="display:none;margin-bottom:12px">
+                    <div style="display:flex;gap:12px;flex-wrap:wrap">
+                        <div class="form-card" style="flex:1;min-width:140px;padding:12px;text-align:center">
+                            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">RESULTS</div>
+                            <div id="hist-count" style="font-size:22px;font-weight:800;color:var(--accent)">0</div>
+                        </div>
+                        <div class="form-card" style="flex:1;min-width:140px;padding:12px;text-align:center">
+                            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">TOTAL REVENUE</div>
+                            <div id="hist-revenue" style="font-size:22px;font-weight:800;color:#4caf50">₹0</div>
+                        </div>
+                        <div class="form-card" style="flex:1;min-width:140px;padding:12px;text-align:center">
+                            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">TOTAL PENALTY</div>
+                            <div id="hist-penalty" style="font-size:22px;font-weight:800;color:#f44336">₹0</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-card">
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Plate</th>
+                                    <th>Type</th>
+                                    <th>Floor</th>
+                                    <th>Slot</th>
+                                    <th>Entry</th>
+                                    <th>Exit</th>
+                                    <th>Duration</th>
+                                    <th>Extra</th>
+                                    <th>Bill (₹)</th>
+                                    <th>Penalty (₹)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allhist-tbody">
+                                <tr>
+                                    <td colspan="10" class="empty-state">Use filters above or click All Records</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="hist-pagination" style="display:none;margin-top:16px"></div>
+                </div>
+            </div>
+
+            <!-- FLOORS -->
+            <div class="page" id="page-floors">
+                <div class="page-title">Floor Management</div>
+                <div class="grid-2">
+                    <div class="form-card">
+                        <h3>➕ Create Floor</h3>
+                        <div class="field"><label>Floor Number</label><input type="number" id="floor-create-num"
+                                placeholder="e.g. 3"></div>
+                        <button class="btn btn-primary btn-full" onclick="createFloor()">Create Floor</button>
+                        <div class="result-box" id="floor-create-result"></div>
+                    </div>
+                    <div class="form-card">
+                        <h3>🚫 Block / Unblock Floor</h3>
+                        <div class="field"><label>Floor Number</label><input type="number" id="floor-block-num"
+                                placeholder="e.g. 2"></div>
+                        <div class="field"><label>Reason (required for block)</label><input type="text"
+                                id="floor-block-reason" placeholder="Maintenance work..."></div>
+                        <div style="display:flex;gap:10px;margin-top:4px">
+                            <button class="btn btn-warn" style="flex:1" onclick="blockFloor()">🚫 Block</button>
+                            <button class="btn btn-primary" style="flex:1" onclick="unblockFloor()">✅ Unblock</button>
+                        </div>
+                        <div class="result-box" id="floor-block-result"></div>
+                    </div>
+                    <div class="form-card" style="grid-column:1/-1">
+                        <h3>📊 View Slots by Floor</h3>
+                        <div style="display:flex;gap:10px;align-items:flex-end">
+                            <div class="field" style="flex:1;margin:0"><label>Floor Number</label><input type="number"
+                                    id="slots-floor-num" placeholder="e.g. 1"></div>
+                            <button class="btn btn-primary" onclick="loadSlotsByFloor()">Load Slots</button>
+                        </div>
+                        <div class="table-wrap" style="margin-top:16px">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Slot ID</th>
+                                        <th>Slot #</th>
+                                        <th>Type</th>
+                                        <th>Allowed (min)</th>
+                                        <th>Rate/hr (₹)</th>
+                                        <th>Penalty/hr (₹)</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="slots-floor-tbody">
+                                    <tr>
+                                        <td colspan="7" class="empty-state">Enter a floor number above</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLOTS -->
+            <div class="page" id="page-slots">
+                <div class="page-title">Slot Management</div>
+                <div class="grid-2">
+                    <div class="form-card">
+                        <h3>➕ Create Slot</h3>
+                        <div class="form-row">
+                            <div class="field"><label>Floor</label><input type="number" id="slot-floor" placeholder="1">
+                            </div>
+                            <div class="field"><label>Slot Number</label><input type="number" id="slot-num"
+                                    placeholder="5"></div>
+                        </div>
+                        <div class="field">
+                            <label>Vehicle Type</label>
+                            <select id="slot-type" onchange="handleTypeChange('slot-type','slot-type-custom')">
+                                <option value="">-- select --</option>
+                            </select>
+                            <input class="custom-type-input" id="slot-type-custom" placeholder="e.g. van, bus, ev">
+                        </div>
+                        <div class="form-row">
+                            <div class="field"><label>Allowed (mins)</label><input type="number" id="slot-mins"
+                                    placeholder="120"></div>
+                            <div class="field"><label>Rate/hr (₹)</label><input type="number" id="slot-rate"
+                                    placeholder="50"></div>
+                            <div class="field"><label>Penalty/hr (₹)</label><input type="number" id="slot-penalty"
+                                    placeholder="100"></div>
+                        </div>
+                        <button class="btn btn-primary btn-full" onclick="createSlot()">Create Slot</button>
+                        <div class="result-box" id="slot-create-result"></div>
+                    </div>
+                    <div>
+                        <div class="form-card">
+                            <h3>✏️ Update Slot</h3>
+                            <div class="field"><label>Slot ID</label><input type="number" id="upd-slot-id"
+                                    placeholder="slot id"></div>
+                            <div class="form-row">
+                                <div class="field"><label>Allowed (mins)</label><input type="number" id="upd-mins"
+                                        placeholder="120"></div>
+                                <div class="field"><label>Rate/hr (₹)</label><input type="number" id="upd-rate"
+                                        placeholder="50"></div>
+                                <div class="field"><label>Penalty/hr (₹)</label><input type="number" id="upd-penalty"
+                                        placeholder="100"></div>
+                            </div>
+                            <button class="btn btn-primary btn-full" onclick="updateSlot()">Update Slot</button>
+                            <div class="result-box" id="slot-update-result"></div>
+                        </div>
+                        <div class="form-card">
+                            <h3>🗑️ Delete Slot</h3>
+                            <div class="field"><label>Slot ID</label><input type="number" id="del-slot-id"
+                                    placeholder="slot id"></div>
+                            <button class="btn btn-danger btn-full" onclick="deleteSlot()">Delete Slot</button>
+                            <div class="result-box" id="slot-delete-result"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- APPROVALS -->
+            <div class="page" id="page-approvals">
+                <div class="page-title">Pending Approvals</div>
+                <button class="refresh-btn" onclick="loadApprovals()">↻ Refresh</button>
+                <div class="form-card">
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Role</th>
+                                    <th>Requested At</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="approvals-tbody">
+                                <tr>
+                                    <td colspan="4" class="empty-state">Click Refresh to load</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- USERS — all admins can see -->
+            <div class="page" id="page-users">
+                <div class="page-title">User Management</div>
+                <button class="refresh-btn" onclick="loadUsers()">↻ Refresh</button>
+                <div class="form-card">
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Username</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th>Joined</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-tbody">
+                                <tr>
+                                    <td colspan="5" class="empty-state">Click Refresh to load</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FLOOR REPORTS -->
+            <div class="page" id="page-reports">
+                <div class="page-title" id="reports-title">Floor Reports</div>
+
+                <!-- Level 1: Floor list — click View to drill down -->
+                <div id="reports-summary">
+                    <div class="form-card">
+                        <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
+                            <button class="refresh-btn" style="float:none;margin:0" onclick="loadReports()">↻
+                                Refresh</button>
+                            <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">Default: last 30
+                                days. Use View Details to filter by date.</span>
+                        </div>
+                        <div class="table-wrap">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Floor</th>
+                                        <th>Vehicle Type</th>
+                                        <th>Total Vehicles</th>
+                                        <th>Revenue (₹)</th>
+                                        <th>Penalty (₹)</th>
+                                        <th>Avg Duration</th>
+                                        <th>Max Duration</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reports-summary-tbody">
+                                    <tr>
+                                        <td colspan="7" class="empty-state">Click Refresh to load</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Level 2: Floor detail with date filter -->
+                <div id="reports-detail" style="display:none">
+                    <button class="btn btn-warn" style="margin-bottom:16px" onclick="showReportsSummary()">←
+                        Back</button>
+                    <div class="form-card" style="margin-bottom:16px">
+                        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+                            <div class="field" style="margin:0;flex:1;min-width:160px"><label>From</label><input
+                                    type="datetime-local" id="rpt-from"></div>
+                            <div class="field" style="margin:0;flex:1;min-width:160px"><label>To</label><input
+                                    type="datetime-local" id="rpt-to"></div>
+                            <button class="btn btn-primary" onclick="reloadFloorDetail()">🔍 Apply Filter</button>
+                            <button class="btn btn-warn" style="padding:10px 14px" onclick="clearReportFilter()">✕ Clear
+                                (30d default)</button>
+                        </div>
+                    </div>
+                    <!-- stat cards -->
+                    <div class="report-stat-grid" id="rpt-stat-cards"></div>
+                    <!-- breakdown table -->
+                    <div class="form-card">
+                        <div class="table-wrap">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Vehicle Type</th>
+                                        <th>Total Vehicles</th>
+                                        <th>Revenue (₹)</th>
+                                        <th>Penalty (₹)</th>
+                                        <th>Avg Duration (min)</th>
+                                        <th>Max Duration (min)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reports-detail-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- SLOT PARTITION -->
+            <div class="page" id="page-partition">
+                <div class="page-title">Slot Partition</div>
+                <div class="page-sub">split · combine</div>
+                <div class="grid-2">
+
+                    <div class="form-card">
+                        <h3>✂ Split Slot</h3>
+                        <div class="field" style="margin-top:16px">
+                            <label>Slot ID</label>
+                            <input type="number" id="split-slot-id" placeholder="e.g. 245">
+                        </div>
+                        <div class="field">
+                            <label>New Type</label>
+                            <select id="split-new-type">
+                                <option value="">-- select --</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <div class="field">
+                                <label>Allowed Mins</label>
+                                <input type="number" id="split-mins" placeholder="60">
+                            </div>
+                            <div class="field">
+                                <label>Rate/hr (₹)</label>
+                                <input type="number" id="split-rate" placeholder="10">
+                            </div>
+                            <div class="field">
+                                <label>Penalty/hr (₹)</label>
+                                <input type="number" id="split-penalty" placeholder="20">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-full" onclick="doSplitSlot()">✂ Split Slot</button>
+                        <div class="result-box" id="split-result"></div>
+                    </div>
+
+                    <div class="form-card">
+                        <h3>⊕ Combine Slots</h3>
+                        <div class="field" style="margin-top:16px">
+                            <label>Slot IDs <span
+                                    style="color:var(--muted);font-size:10px">comma-separated</span></label>
+                            <input type="text" id="combine-slot-ids" placeholder="e.g. 245,246">
+                        </div>
+                        <div class="field">
+                            <label>New Type</label>
+                            <select id="combine-new-type">
+                                <option value="">-- select --</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <div class="field">
+                                <label>Allowed Mins</label>
+                                <input type="number" id="combine-mins" placeholder="120">
+                            </div>
+                            <div class="field">
+                                <label>Rate/hr (₹)</label>
+                                <input type="number" id="combine-rate" placeholder="20">
+                            </div>
+                            <div class="field">
+                                <label>Penalty/hr (₹)</label>
+                                <input type="number" id="combine-penalty" placeholder="40">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-full" onclick="doCombineSlots()">⊕ Combine Slots</button>
+                        <div class="result-box" id="combine-result"></div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // ── ALLOWED MINS — loaded once, populates dropdown ───────────────
+        async function loadAllowedMins() {
+            try {
+                const { ok, data } = await api('GET', 'admin/allowed-mins');
+                if (ok && data.allowed_mins) {
+                    const sel = document.getElementById('f-allowed-mins');
+                    sel.innerHTML = '<option value="">Any</option>' +
+                        data.allowed_mins.map(m =>
+                            `<option value="${m}">${m} min</option>`
+                        ).join('');
+                }
+            } catch (e) { /* dropdown stays as "Any" only */ }
+        }
+
+        // ── VEHICLE TYPES — loaded once from backend, used everywhere ─────
+        let vehicleTypes = [];  // set by loadVehicleTypes() at init
+
+        async function loadVehicleTypes() {
+            try {
+                const { ok, data } = await api('GET', 'admin/vehicle-types');
+                if (ok) {
+                    // merge DB types + suggested, deduplicate, sort
+                    const all = new Set([
+                        ...(data.types || []),
+                        ...(data.suggested || [])
+                    ]);
+                    vehicleTypes = [...all].sort();
+                    populateTypeDropdowns();
+                }
+            } catch (e) {
+                // fallback to common types if endpoint fails
+                vehicleTypes = ['auto', 'bike', 'bus', 'car', 'jeep', 'motorcycle', 'suv', 'truck', 'van'];
+                populateTypeDropdowns();
+            }
+        }
+
+        // Populates every vehicle-type <select> in the page.
+        // Called once after vehicleTypes is loaded.
+        function populateTypeDropdowns() {
+            const typeOptions = vehicleTypes.map(t =>
+                `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`
+            ).join('');
+
+            // entry-type: select + custom option
+            const entryType = document.getElementById('entry-type');
+            entryType.innerHTML =
+                '<option value="">-- select --</option>' +
+                typeOptions +
+                '<option value="custom">+ Custom type...</option>';
+
+            // slot-type: select + custom option
+            const slotType = document.getElementById('slot-type');
+            slotType.innerHTML =
+                '<option value="">-- select --</option>' +
+                typeOptions +
+                '<option value="custom">+ Custom type...</option>';
+
+            // af-type (active filter): All Types + list
+            const afType = document.getElementById('af-type');
+            afType.innerHTML = '<option value="">All Types</option>' + typeOptions;
+
+            // f-type (history filter): All Types + list
+            const fType = document.getElementById('f-type');
+            fType.innerHTML = '<option value="">All Types</option>' + typeOptions;
+        }
+
+        // ── TYPE CHANGE HANDLER ───────────────────────────────────────────
+        function handleTypeChange(selectId, customId) {
+            const sel = document.getElementById(selectId);
+            const custom = document.getElementById(customId);
+            if (sel.value === 'custom') {
+                custom.style.display = 'block';
+                custom.focus();
+            } else {
+                custom.style.display = 'none';
+                custom.value = '';
+            }
+        }
+
+        function getVehicleType(selectId, customId) {
+            const sel = document.getElementById(selectId);
+            const custom = document.getElementById(customId);
+            return sel.value === 'custom' ? custom.value.trim().toLowerCase() : sel.value;
+        }
+
+        // ── API HELPER ────────────────────────────────────────────────────
+        async function api(method, url, params) {
+            const opts = { method, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } };
+            if (params && method !== 'GET') opts.body = new URLSearchParams(params).toString();
+            const res = await fetch(url, opts);
+            const data = await res.json();
+            if (res.status === 503) showServerBusy();
+            return { ok: res.ok, data, status: res.status };
+        }
+
+        function showServerBusy() {
+            const existing = document.getElementById('server-busy-banner');
+            if (existing) existing.remove();
+            const banner = document.createElement('div');
+            banner.id = 'server-busy-banner';
+            banner.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#b71c1c;color:white;padding:16px 32px;border-radius:8px;font-family:monospace;font-size:14px;z-index:9999;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5)';
+            let s = 30;
+            banner.innerHTML = `⚠️ Server is busy — please wait <span id="busy-countdown">${s}</span>s before retrying`;
+            document.body.appendChild(banner);
+            const iv = setInterval(() => {
+                s--;
+                const el = document.getElementById('busy-countdown');
+                if (el) el.textContent = s;
+                if (s <= 0) {
+                    clearInterval(iv);
+                    banner.innerHTML = '✅ You can retry now';
+                    banner.style.background = '#1b5e20';
+                    setTimeout(() => banner.remove(), 3000);
+                }
+            }, 1000);
+        }
+
+        function setResult(id, msg, isError) {
+            const el = document.getElementById(id);
+            el.className = 'result-box show ' + (isError ? 'error' : 'success');
+            el.innerHTML = msg;
+        }
+
+        function showPage(id, el) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('page-' + id).classList.add('active');
+            el.classList.add('active');
+            if (id === 'active') loadActive();
+            if (id === 'partition') loadVehicleSizes();
+            if (id === 'allhistory') loadAllHistory();
+            if (id === 'approvals') loadApprovals();
+            if (id === 'reports') loadReports();
+            if (id === 'users') loadUsers();
+        }
+
+        // ── ENTRY ─────────────────────────────────────────────────────────
+        async function doEntry() {
+            const plate = document.getElementById('entry-plate').value.trim();
+            const type = getVehicleType('entry-type', 'entry-type-custom');
+            const floor = document.getElementById('entry-floor').value.trim();
+            const slot = document.getElementById('entry-slot').value.trim();
+            if (!plate || !type) return setResult('entry-result', '⚠ Number plate and vehicle type are required', true);
+            const params = { number_plate: plate, vehicle_type: type };
+            if (floor) params.floor = floor;
+            if (slot) params.slot_num = slot;
+            try {
+                const { ok, data } = await api('POST', 'parking/entry', params);
+                if (ok) {
+                    setResult('entry-result', `✅ Parked successfully!<br>Plate: ${data.number_plate} | Type: ${data.vehicle_type}<br>Floor: ${data.floor} | Slot: ${data.slot_num}<br>Entry Time: ${data.entry_time}`, false);
+                    ['entry-plate', 'entry-floor', 'entry-slot'].forEach(id => document.getElementById(id).value = '');
+                    document.getElementById('entry-type').value = '';
+                } else {
+                    setResult('entry-result', `❌ ${data.message || data.error}`, true);
+                }
+            } catch (e) { setResult('entry-result', '❌ Network error', true); }
+        }
+
+        // ── EXIT ──────────────────────────────────────────────────────────
+        async function doExit() {
+            const plate = document.getElementById('exit-plate').value.trim();
+            if (!plate) return setResult('exit-result', '⚠ Number plate is required', true);
+            try {
+                const { ok, data } = await api('POST', 'parking/exit', { number_plate: plate });
+                if (ok) {
+                    setResult('exit-result', `✅ Exit processed!<br>Plate: ${data.number_plate}<br>Duration: ${data.duration_minutes} mins<br>Amount Due: ₹${data.amount_due}<br>Penalty: ₹${data.penalty || 0}<br><span style="color:var(--muted);font-size:11px">→ Go to All History tab to view the record</span>`, false);
+                    document.getElementById('exit-plate').value = '';
+                    loadActive();
+                } else {
+                    setResult('exit-result', `❌ ${data.message || data.error}`, true);
+                }
+            } catch (e) { setResult('exit-result', '❌ Network error', true); }
+        }
+
+        // ── ACTIVE VEHICLES ───────────────────────────────────────────────
+        let cachedActive = [];
+        let activeMeta = null;
+        let activePage = 1;
+
+        function getDurationMins(entryTime) {
+            return Math.floor((Date.now() - new Date(entryTime.replace(' ', 'T')).getTime()) / 60000);
+        }
+
+        function renderActiveRows(vehicles) {
+            const tbody = document.getElementById('active-tbody');
+            tbody.innerHTML = vehicles.length
+                ? vehicles.map(v => {
+                    const mins = getDurationMins(v.entry_time);
+                    return `<tr>
+                <td>${v.number_plate}</td>
+                <td><span class="badge badge-blue">${v.vehicle_type}</span></td>
+                <td>${v.floor}</td>
+                <td>${v.slot_num !== undefined ? v.slot_num : v.slot_id}</td>
+                <td>${v.entry_time}</td>
+                <td>${mins > 0 ? `<span style="color:${mins > 120 ? '#f44336' : '#4caf50'}">${mins} min</span>` : '—'}</td>
+            </tr>`;
+                }).join('')
+                : '<tr><td colspan="6" class="empty-state">No vehicles found</td></tr>';
+        }
+
+        function filterActive() {
+            const plate = document.getElementById('af-plate').value.trim().toUpperCase();
+            const type = document.getElementById('af-type').value;
+            const floor = document.getElementById('af-floor').value.trim();
+            const minMins = document.getElementById('af-min-mins').value.trim();
+            let filtered = cachedActive;
+            if (plate) filtered = filtered.filter(v => v.number_plate.includes(plate));
+            if (type) filtered = filtered.filter(v => v.vehicle_type === type);
+            if (floor) filtered = filtered.filter(v => String(v.floor) === floor);
+            if (minMins) filtered = filtered.filter(v => getDurationMins(v.entry_time) >= parseInt(minMins));
+            renderActiveRows(filtered);
+            document.getElementById('active-summary').style.display = 'flex';
+            document.getElementById('active-count').textContent = filtered.length;
+            document.getElementById('active-total').textContent = cachedActive.length;
+        }
+
+        function clearActiveFilters() {
+            ['af-plate', 'af-floor', 'af-min-mins'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('af-type').value = '';
+            renderActiveRows(cachedActive);
+            document.getElementById('active-count').textContent = cachedActive.length;
+            document.getElementById('active-total').textContent = cachedActive.length;
+        }
+
+        async function loadActive(page) {
+            page = page || 1;
+            const tbody = document.getElementById('active-tbody');
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Loading...</td></tr>';
+            try {
+                const { ok, data } = await api('GET', `admin/active-vehicles?page=${page}`);
+                if (ok) {
+                    activeMeta = data.metadata;
+                    activePage = page;
+                    cachedActive = data.vehicles || [];
+                    renderActiveRows(cachedActive);
+                    document.getElementById('active-summary').style.display = 'flex';
+                    document.getElementById('active-count').textContent = cachedActive.length;
+                    document.getElementById('active-total').textContent = activeMeta ? activeMeta.total_count : cachedActive.length;
+                    renderActivePageButtons();
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="6" class="empty-state">${data.message || 'Error loading'}</td></tr>`;
+                }
+            } catch (e) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Network error</td></tr>'; }
+        }
+
+        function renderActivePageButtons() {
+            const bar = document.getElementById('active-pagination');
+            if (!activeMeta || activeMeta.total_pages <= 1) { bar.style.display = 'none'; return; }
+            const tp = activeMeta.total_pages, ap = activePage;
+            let html = `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">`;
+            html += `<span style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-right:8px">Page ${ap} of ${tp} (${activeMeta.total_count} vehicles)</span>`;
+            html += `<button class="btn btn-primary" style="padding:5px 12px;font-size:12px;${ap === 1 ? 'opacity:0.3' : ''}" onclick="${ap > 1 ? 'loadActive(' + (ap - 1) + ')' : ''}">← Prev</button>`;
+            for (let p = Math.max(1, ap - 2); p <= Math.min(tp, ap + 2); p++) {
+                html += `<button class="btn btn-primary" style="padding:5px 10px;font-size:12px;${p === ap ? 'background:var(--accent);color:#000;font-weight:800' : ''}" onclick="loadActive(${p})">${p}</button>`;
+            }
+            html += `<button class="btn btn-primary" style="padding:5px 12px;font-size:12px;${ap === tp ? 'opacity:0.3' : ''}" onclick="${ap < tp ? 'loadActive(' + (ap + 1) + ')' : ''}">Next →</button>`;
+            html += `</div>`;
+            bar.innerHTML = html;
+            bar.style.display = 'flex';
+        }
+
+        // ── HISTORY PAGINATION STATE ──────────────────────────────────────
+        let metadata = null;
+        let currentPage = 1;
+        let lastSearchParams = null; // stores filter params for page jumps — no ID list needed
+
+        async function loadAllHistory(forceRefresh) {
+            metadata = null; currentPage = 1; lastSearchParams = null;
+            document.getElementById('hist-pagination').style.display = 'none';
+            document.getElementById('hist-summary').style.display = 'none';
+            document.getElementById('allhist-tbody').innerHTML = '<tr><td colspan="10" class="empty-state">Use filters above and click Search</td></tr>';
+        }
+
+        async function searchHistory() {
+            const tbody = document.getElementById('allhist-tbody');
+            tbody.innerHTML = '<tr><td colspan="10" class="empty-state">Searching...</td></tr>';
+            document.getElementById('hist-summary').style.display = 'none';
+            document.getElementById('hist-pagination').style.display = 'none';
+
+            const params = new URLSearchParams();
+            const plate = document.getElementById('f-plate').value.trim();
+            const type = document.getElementById('f-type').value;
+            const floor = document.getElementById('f-floor').value.trim();
+            const slot = document.getElementById('f-slot').value.trim();
+            const from = document.getElementById('f-from').value;
+            const to = document.getElementById('f-to').value;
+            const minAmount = document.getElementById('f-min-amount').value.trim();
+            const maxAmount = document.getElementById('f-max-amount').value.trim();
+            const minPenalty = document.getElementById('f-min-penalty').value.trim();
+            const maxPenalty = document.getElementById('f-max-penalty').value.trim();
+            const penaltyOnly = document.getElementById('f-penalty-only').checked;
+            const allowedMins = document.getElementById('f-allowed-mins').value;
+            const minTotalMins = document.getElementById('f-min-total-mins').value.trim();
+            const maxTotalMins = document.getElementById('f-max-total-mins').value.trim();
+            const minExtraMins = document.getElementById('f-min-extra-mins').value.trim();
+
+            if (plate) params.append('plate', plate);
+            if (type) params.append('type', type);
+            if (floor) params.append('floor', floor);
+            if (slot) params.append('slot', slot);
+            if (from) params.append('from', from);
+            if (to) params.append('to', to);
+            if (minAmount) params.append('min_amount', minAmount);
+            if (maxAmount) params.append('max_amount', maxAmount);
+            if (minPenalty) params.append('min_penalty', minPenalty);
+            if (maxPenalty) params.append('max_penalty', maxPenalty);
+            if (penaltyOnly) params.append('penalty_only', 'true');
+            if (allowedMins) params.append('allowed_mins', allowedMins);
+            if (minTotalMins) params.append('min_total_mins', minTotalMins);
+            if (maxTotalMins) params.append('max_total_mins', maxTotalMins);
+            if (minExtraMins) params.append('min_extra_mins', minExtraMins);
+
+            try {
+                const res = await fetch('admin/history/search?' + params.toString());
+                const data = await res.json();
+                if (res.ok) {
+                    metadata = data.metadata;
+                    lastSearchParams = params.toString(); // save for page jumps
+                    currentPage = 1;
+                    renderHistRows(data.records || []);
+                    showHistSummary(metadata.total_count, parseFloat(metadata.total_revenue).toFixed(2), parseFloat(metadata.total_penalty).toFixed(2));
+                    renderPageButtons(metadata.total_pages, 1);
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="10" class="empty-state">${data.message || 'Error'}</td></tr>`;
+                }
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="10" class="empty-state">Network error</td></tr>';
+            }
+        }
+
+        async function goToPage(pageNum) {
+            if (!metadata || pageNum < 1 || pageNum > metadata.total_pages) return;
+            const tbody = document.getElementById('allhist-tbody');
+            tbody.innerHTML = '<tr><td colspan="10" class="empty-state">Loading...</td></tr>';
+            try {
+                // send page number + original filters — backend calculates OFFSET = (page-1)×50
+                // no ID list needed — page number is all the information required
+                const url = 'admin/history/search?' + lastSearchParams + '&page=' + pageNum;
+                const res = await fetch(url);
+                const data = await res.json();
+                if (res.ok) {
+                    currentPage = pageNum;
+                    renderHistRows(data.records || []);
+                    renderPageButtons(metadata.total_pages, currentPage);
+                    document.getElementById('allhist-tbody').closest('.form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="10" class="empty-state">${data.message || 'Error'}</td></tr>`;
+                }
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="10" class="empty-state">Network error</td></tr>';
+            }
+        }
+
+        function renderPageButtons(totalPages, activePage) {
+            const bar = document.getElementById('hist-pagination');
+            if (totalPages <= 1) { bar.style.display = 'none'; return; }
+            let startPage = Math.max(1, activePage - 2);
+            let endPage = Math.min(totalPages, startPage + 4);
+            startPage = Math.max(1, endPage - 4);
+            const rowStart = (activePage - 1) * metadata.page_size + 1;
+            const rowEnd = Math.min(activePage * metadata.page_size, metadata.total_count);
+            let html = `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">`;
+            html += `<span style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-right:8px">Showing ${rowStart}–${rowEnd} of ${metadata.total_count}</span>`;
+            html += `<button class="btn btn-primary" style="padding:5px 12px;font-size:12px;${activePage === 1 ? 'opacity:0.3;cursor:default' : ''}" onclick="${activePage > 1 ? 'goToPage(' + (activePage - 1) + ')' : ''}">← Prev</button>`;
+            if (startPage > 1) {
+                html += `<button class="btn btn-primary" style="padding:5px 10px;font-size:12px" onclick="goToPage(1)">1</button>`;
+                if (startPage > 2) html += `<span style="color:var(--muted)">…</span>`;
+            }
+            for (let p = startPage; p <= endPage; p++) {
+                const isActive = p === activePage;
+                html += `<button class="btn ${isActive ? '' : 'btn-primary'}" style="padding:5px 10px;font-size:12px;${isActive ? 'background:var(--accent);color:#000;font-weight:800;border:none' : ''}" onclick="goToPage(${p})">${p}</button>`;
+            }
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += `<span style="color:var(--muted)">…</span>`;
+                html += `<button class="btn btn-primary" style="padding:5px 10px;font-size:12px" onclick="goToPage(${totalPages})">${totalPages}</button>`;
+            }
+            html += `<button class="btn btn-primary" style="padding:5px 12px;font-size:12px;${activePage === totalPages ? 'opacity:0.3;cursor:default' : ''}" onclick="${activePage < totalPages ? 'goToPage(' + (activePage + 1) + ')' : ''}">Next →</button>`;
+            html += `</div>`;
+            bar.innerHTML = html;
+            bar.style.display = 'flex';
+            bar.style.marginTop = '16px';
+        }
+
+        function renderHistRows(records) {
+            const tbody = document.getElementById('allhist-tbody');
+            tbody.innerHTML = records.length
+                ? records.map(r => `<tr>
+            <td>${r.number_plate}</td>
+            <td><span class="badge badge-blue">${r.vehicle_type}</span></td>
+            <td>${r.floor}</td>
+            <td>${r.slot_num !== null && r.slot_num !== undefined ? r.slot_num : '<span style="color:var(--muted);font-style:italic">Removed</span>'}</td>
+            <td>${r.entry_time}</td>
+            <td>${r.exit_time}</td>
+            <td>${r.total_mins} min</td>
+            <td>${r.extra_mins > 0 ? '<span style="color:#f44336">+' + r.extra_mins + ' min</span>' : '<span style="color:#4caf50">—</span>'}</td>
+            <td>₹${r.total_amount}</td>
+            <td>${r.penalty_amount > 0 ? '<span style="color:#f44336">₹' + r.penalty_amount + '</span>' : '<span style="color:#4caf50">₹0</span>'}</td>
+        </tr>`).join('')
+                : '<tr><td colspan="10" class="empty-state">No records found</td></tr>';
+        }
+
+        function showHistSummary(count, revenue, penalty) {
+            document.getElementById('hist-summary').style.display = 'block';
+            document.getElementById('hist-count').textContent = count;
+            document.getElementById('hist-revenue').textContent = '₹' + revenue;
+            document.getElementById('hist-penalty').textContent = '₹' + penalty;
+        }
+
+        function setPreset(preset) {
+            const now = new Date();
+            const fmt = d => d.toISOString().slice(0, 16);
+            document.getElementById('f-to').value = fmt(now);
+            if (preset === 'today') {
+                const s = new Date(now); s.setHours(0, 0, 0, 0);
+                document.getElementById('f-from').value = fmt(s);
+            } else if (preset === 'week') {
+                const s = new Date(now); s.setDate(now.getDate() - 7);
+                document.getElementById('f-from').value = fmt(s);
+            } else if (preset === 'month') {
+                const s = new Date(now); s.setDate(now.getDate() - 30);
+                document.getElementById('f-from').value = fmt(s);
+            }
+        }
+
+        function clearFilters() {
+            ['f-plate', 'f-floor', 'f-slot', 'f-from', 'f-to',
+                'f-min-amount', 'f-max-amount', 'f-min-penalty', 'f-max-penalty',
+                'f-min-total-mins', 'f-max-total-mins', 'f-min-extra-mins']
+                .forEach(id => document.getElementById(id).value = '');
+            document.getElementById('f-type').value = '';
+            document.getElementById('f-allowed-mins').value = '';
+            document.getElementById('f-penalty-only').checked = false;
+            document.getElementById('hist-summary').style.display = 'none';
+            document.getElementById('allhist-tbody').innerHTML = '<tr><td colspan="10" class="empty-state">Use filters above or click All Records</td></tr>';
+        }
+
+        function toggleSlotField() {
+            const floor = document.getElementById('f-floor').value.trim();
+            const sf = document.getElementById('f-slot-field');
+            if (floor) { sf.style.display = 'block'; } else { sf.style.display = 'none'; document.getElementById('f-slot').value = ''; }
+        }
+
+        // ── FLOOR REPORTS ─────────────────────────────────────────────────
+        let currentReportFloor = null;
+
+        async function loadReports() {
+            const tbody = document.getElementById('reports-summary-tbody');
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Loading...</td></tr>';
+            try {
+                // Get floor list first
+                const { ok: fok, data: fdata } = await api('GET', 'admin/floors');
+                if (!fok) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Error loading floors</td></tr>'; return; }
+                const floors = (fdata.floors || []).map(f => f.floor);
+                if (!floors.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No floors found</td></tr>'; return; }
+
+                // Fetch report for each floor (default 30-day window applied by backend)
+                const rows = [];
+                for (const floor of floors) {
+                    const { ok, data } = await api('GET', `admin/floor-report/${floor}`);
+                    if (ok && data.breakdown) {
+                        data.breakdown.forEach(b => {
+                            rows.push({ floor, ...b });
+                        });
+                    }
+                }
+
+                tbody.innerHTML = rows.length
+                    ? rows.map(r => {
+                        const isTotal = r.vehicle_type === 'ALL';
+                        return `<tr style="${isTotal ? 'font-weight:700;background:rgba(0,229,160,0.05)' : ''}">
+                    <td>${isTotal ? '— Floor ' + r.floor + ' Total —' : 'Floor ' + r.floor}</td>
+                    <td>${isTotal ? '<span class="badge badge-green">ALL</span>' : '<span class="badge badge-blue">' + r.vehicle_type + '</span>'}</td>
+                    <td>${r.total_vehicles}</td>
+                    <td>₹${r.total_revenue}</td>
+                    <td>${r.total_penalty > 0 ? '<span style="color:#f44336">₹' + r.total_penalty + '</span>' : '₹0'}</td>
+                    <td>${r.avg_duration_mins} min</td>
+                    <td>${r.max_duration_mins} min</td>
+                </tr>`;
+                    }).join('')
+                    : '<tr><td colspan="7" class="empty-state">No data for last 30 days</td></tr>';
+
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Network error</td></tr>';
+            }
+        }
+
+        async function showFloorDetail(floorNum) {
+            currentReportFloor = floorNum;
+            document.getElementById('reports-title').textContent = 'Floor ' + floorNum + ' — Detailed Report';
+            document.getElementById('reports-summary').style.display = 'none';
+            document.getElementById('reports-detail').style.display = 'block';
+            await reloadFloorDetail();
+        }
+
+        async function reloadFloorDetail() {
+            if (!currentReportFloor) return;
+            const from = document.getElementById('rpt-from').value;
+            const to = document.getElementById('rpt-to').value;
+            let url = `admin/floor-report/${currentReportFloor}`;
+            const p = new URLSearchParams();
+            if (from) p.append('from', from);
+            if (to) p.append('to', to);
+            if (p.toString()) url += '?' + p.toString();
+
+            const tbody = document.getElementById('reports-detail-tbody');
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Loading...</td></tr>';
+            document.getElementById('rpt-stat-cards').innerHTML = '';
+
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                if (res.ok && data.breakdown) {
+                    const allRow = data.breakdown.find(r => r.vehicle_type === 'ALL') || {};
+                    const typeRows = data.breakdown.filter(r => r.vehicle_type !== 'ALL');
+
+                    // stat cards from ALL row
+                    document.getElementById('rpt-stat-cards').innerHTML = `
+                <div class="report-stat"><div class="report-stat-label">Total Vehicles</div><div class="report-stat-value" style="color:var(--accent)">${allRow.total_vehicles || 0}</div></div>
+                <div class="report-stat"><div class="report-stat-label">Total Revenue</div><div class="report-stat-value" style="color:#4caf50">₹${allRow.total_revenue || 0}</div></div>
+                <div class="report-stat"><div class="report-stat-label">Total Penalty</div><div class="report-stat-value" style="color:#f44336">₹${allRow.total_penalty || 0}</div></div>
+                <div class="report-stat"><div class="report-stat-label">Avg Duration</div><div class="report-stat-value" style="color:var(--accent2)">${allRow.avg_duration_mins || 0} min</div></div>
+                <div class="report-stat"><div class="report-stat-label">Max Duration</div><div class="report-stat-value" style="color:var(--warn)">${allRow.max_duration_mins || 0} min</div></div>
+                <div class="report-stat"><div class="report-stat-label">Period</div><div style="font-size:12px;margin-top:4px;font-family:var(--mono);color:var(--muted)">${data.period.from || 'All time'}<br>to ${data.period.to || 'now'}</div></div>
+            `;
+
+                    tbody.innerHTML = typeRows.length
+                        ? typeRows.map(r => `<tr>
+                    <td><span class="badge badge-blue">${r.vehicle_type}</span></td>
+                    <td>${r.total_vehicles}</td>
+                    <td>₹${r.total_revenue}</td>
+                    <td>${r.total_penalty > 0 ? '<span style="color:#f44336">₹' + r.total_penalty + '</span>' : '₹0'}</td>
+                    <td>${r.avg_duration_mins} min</td>
+                    <td>${r.max_duration_mins} min</td>
+                </tr>`).join('')
+                        : '<tr><td colspan="6" class="empty-state">No records for this period</td></tr>';
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="6" class="empty-state">${data.message || 'Error'}</td></tr>`;
+                }
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Network error</td></tr>';
+            }
+        }
+
+        function clearReportFilter() {
+            document.getElementById('rpt-from').value = '';
+            document.getElementById('rpt-to').value = '';
+            reloadFloorDetail();
+        }
+
+        function showReportsSummary() {
+            document.getElementById('reports-title').textContent = 'Floor Reports';
+            document.getElementById('reports-summary').style.display = 'block';
+            document.getElementById('reports-detail').style.display = 'none';
+            currentReportFloor = null;
+        }
+
+        // ── APPROVALS ─────────────────────────────────────────────────────
+        async function loadApprovals() {
+            const tbody = document.getElementById('approvals-tbody');
+            tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Loading...</td></tr>';
+            try {
+                const { ok, data } = await api('GET', 'admin/pending-users');
+                if (ok) {
+                    const pending = data.pending || [];
+                    tbody.innerHTML = pending.length
+                        ? pending.map(u => `<tr>
+                    <td>${u.username}</td>
+                    <td><span class="badge ${u.role === 'admin' ? 'badge-warn' : 'badge-blue'}">${u.role}</span></td>
+                    <td>${u.requested_at}</td>
+                    <td>
+                        <button class="btn btn-primary" style="padding:4px 12px;margin-right:6px;font-size:12px" onclick="approveUser(${u.id},this)">Approve</button>
+                        <button class="btn btn-danger" style="padding:4px 12px;font-size:12px" onclick="rejectUser(${u.id},this)">Reject</button>
+                    </td>
+                </tr>`).join('')
+                        : '<tr><td colspan="4" class="empty-state">No pending approvals</td></tr>';
+                }
+            } catch (e) { tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Network error</td></tr>'; }
+        }
+
+        async function approveUser(id, btn) {
+            btn.disabled = true; btn.textContent = '...';
+            const { ok, data } = await api('POST', `admin/users/${id}/approve`);
+            if (ok) { loadApprovals(); } else { btn.disabled = false; btn.textContent = 'Approve'; alert(data.message); }
+        }
+
+        async function rejectUser(id, btn) {
+            if (!confirm('Reject and delete this user?')) return;
+            btn.disabled = true; btn.textContent = '...';
+            const { ok, data } = await api('POST', `admin/users/${id}/reject`);
+            if (ok) { loadApprovals(); } else { btn.disabled = false; btn.textContent = 'Reject'; alert(data.message); }
+        }
+
+        // ── USERS ─────────────────────────────────────────────────────────
+        async function loadUsers() {
+            const tbody = document.getElementById('users-tbody');
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Loading...</td></tr>';
+            try {
+                const { ok, data } = await api('GET', 'admin/users');
+                if (ok) {
+                    const users = data.users || [];
+                    tbody.innerHTML = users.length
+                        ? users.map(u => `<tr>
+                    <td>${u.id}</td>
+                    <td>${u.username}${u.id == 1 ? ' <span class="badge badge-warn" style="font-size:9px">FIRST</span>' : ''}</td>
+                    <td><span class="badge ${u.role === 'admin' ? 'badge-warn' : 'badge-blue'}">${u.role}</span></td>
+                    <td><span class="badge ${u.status === 'active' ? 'badge-green' : 'badge-red'}">${u.status}</span></td>
+                    <td>${u.joined}</td>
+                </tr>`).join('')
+                        : '<tr><td colspan="5" class="empty-state">No users found</td></tr>';
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">${data.message || 'Access denied'}</td></tr>`;
+                }
+            } catch (e) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Network error</td></tr>'; }
+        }
+
+        // ── SLOT / FLOOR MANAGEMENT ───────────────────────────────────────
+        async function createFloor() {
+            const floor = document.getElementById('floor-create-num').value.trim();
+            if (!floor) return setResult('floor-create-result', '⚠ Floor number required', true);
+            const { ok, data } = await api('POST', 'admin/floors', { floor });
+            setResult('floor-create-result', ok ? `✅ ${data.message}` : `❌ ${data.message}`, !ok);
+        }
+
+        async function blockFloor() {
+            const floor = document.getElementById('floor-block-num').value.trim();
+            const reason = document.getElementById('floor-block-reason').value.trim();
+            if (!floor || !reason) return setResult('floor-block-result', '⚠ Floor and reason are required', true);
+            const { ok, data } = await api('POST', `admin/floors/${floor}/block`, { reason });
+            setResult('floor-block-result', ok ? `✅ ${data.message}` : `❌ ${data.message}`, !ok);
+        }
+
+        async function unblockFloor() {
+            const floor = document.getElementById('floor-block-num').value.trim();
+            if (!floor) return setResult('floor-block-result', '⚠ Floor number required', true);
+            const { ok, data } = await api('DELETE', `admin/floors/${floor}/block`);
+            setResult('floor-block-result', ok ? `✅ ${data.message}` : `❌ ${data.message}`, !ok);
+        }
+
+        async function loadSlotsByFloor() {
+            const floor = document.getElementById('slots-floor-num').value.trim();
+            if (!floor) return;
+            const tbody = document.getElementById('slots-floor-tbody');
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Loading...</td></tr>';
+            const { ok, data } = await api('GET', `admin/slots/${floor}`);
+            if (ok) {
+                const slots = data.slots || [];
+                tbody.innerHTML = slots.length
+                    ? slots.map(s => `<tr>
+                <td>${s.slot_id}</td>
+                <td>${s.slot_num}</td>
+                <td><span class="badge badge-blue">${s.vehicle_type}</span></td>
+                <td>${s.allowed_mins} min</td>
+                <td>₹${s.rate_per_hr}</td>
+                <td>₹${s.penalty_per_hr}</td>
+                <td><span class="badge ${s.status === 'OCCUPIED' ? 'badge-red' : 'badge-green'}">${s.status === 'OCCUPIED' ? 'Occupied (' + s.number_plate + ')' : 'Free'}</span></td>
+            </tr>`).join('')
+                    : '<tr><td colspan="7" class="empty-state">No slots on this floor</td></tr>';
+            } else {
+                tbody.innerHTML = `<tr><td colspan="7" class="empty-state">${data.message || 'Error'}</td></tr>`;
+            }
+        }
+
+        async function createSlot() {
+            const params = {
+                floor: document.getElementById('slot-floor').value.trim(),
+                slot_num: document.getElementById('slot-num').value.trim(),
+                vehicle_type: getVehicleType('slot-type', 'slot-type-custom'),
+                allowed_mins: document.getElementById('slot-mins').value.trim(),
+                rate_per_hr: document.getElementById('slot-rate').value.trim(),
+                penalty_per_hr: document.getElementById('slot-penalty').value.trim(),
+            };
+            if (!params.floor || !params.slot_num || !params.vehicle_type)
+                return setResult('slot-create-result', '⚠ Floor, slot number and type are required', true);
+            const { ok, data } = await api('POST', 'admin/slots', params);
+            if (ok) {
+                setResult('slot-create-result', `✅ ${data.message}`, false);
+                // reload vehicle types so new custom type appears in dropdowns
+                loadVehicleTypes();
+            } else {
+                setResult('slot-create-result', `❌ ${data.message}`, true);
+            }
+        }
+
+        async function updateSlot() {
+            const id = document.getElementById('upd-slot-id').value.trim();
+            if (!id) return setResult('slot-update-result', '⚠ Slot ID required', true);
+            const params = {
+                allowed_mins: document.getElementById('upd-mins').value.trim(),
+                rate_per_hr: document.getElementById('upd-rate').value.trim(),
+                penalty_per_hr: document.getElementById('upd-penalty').value.trim(),
+            };
+            const { ok, data } = await api('PUT', `admin/slots/${id}`, params);
+            setResult('slot-update-result', ok ? `✅ ${data.message}` : `❌ ${data.message}`, !ok);
+        }
+
+        async function deleteSlot() {
+            const id = document.getElementById('del-slot-id').value.trim();
+            if (!id) return setResult('slot-delete-result', '⚠ Slot ID required', true);
+            if (!confirm(`Delete slot ${id}? This cannot be undone.`)) return;
+            const { ok, data } = await api('DELETE', `admin/slots/${id}`);
+            setResult('slot-delete-result', ok ? `✅ ${data.message}` : `❌ ${data.message}`, !ok);
+        }
+
+        async function logout() {
+            try { await fetch('logout', { method: 'POST' }); } catch (e) { }
+            window.location.href = 'login.html';
+        }
+
+        // ── SLOT PARTITION — load vehicle sizes into dropdowns ───────────
+        async function loadVehicleSizes() {
+            try {
+                const { ok, data } = await api('GET', 'admin/vehicle-size');
+                if (ok && Array.isArray(data)) {
+                    const opts = data
+                        .sort((a, b) => a.size - b.size)
+                        .map(v =>
+                            `<option value="${v.vehicle_type}">${v.vehicle_type} (size ${v.size})</option>`
+                        ).join('');
+                    document.getElementById('split-new-type').innerHTML =
+                        '<option value="">-- select --</option>' + opts;
+                    document.getElementById('combine-new-type').innerHTML =
+                        '<option value="">-- select --</option>' + opts;
+                }
+            } catch (e) { /* dropdowns stay empty */ }
+        }
+
+        // ── SPLIT SLOT ────────────────────────────────────────────────────
+        async function doSplitSlot() {
+            const slotId = document.getElementById('split-slot-id').value.trim();
+            const newType = document.getElementById('split-new-type').value;
+            const mins = document.getElementById('split-mins').value.trim();
+            const rate = document.getElementById('split-rate').value.trim();
+            const penalty = document.getElementById('split-penalty').value.trim();
+
+            if (!slotId || !newType || !mins || !rate || !penalty)
+                return setResult('split-result',
+                    '⚠ All fields are required', true);
+
+            try {
+                const { ok, data } = await api('POST',
+                    `admin/slots/${slotId}/split`, {
+                    new_type: newType,
+                    allowed_mins: mins,
+                    rate_per_hr: rate,
+                    penalty_per_hr: penalty
+                });
+
+                if (ok) {
+                    const children = data.children || [];
+                    const rows = children.map(c =>
+                        `Slot ${c.slot_id} → ${c.type} · row ${c.slot_row} · cols ${c.col_start}–${c.col_end}`
+                    ).join('<br>');
+                    setResult('split-result',
+                        `✅ Split successful! Created ${children.length} child slot(s):<br>${rows}`,
+                        false);
+                    document.getElementById('split-slot-id').value = '';
+                } else {
+                    setResult('split-result',
+                        `❌ ${data.message || data.error}`, true);
+                }
+            } catch (e) {
+                setResult('split-result', '❌ Network error', true);
+            }
+        }
+
+        // ── COMBINE SLOTS ─────────────────────────────────────────────────
+        async function doCombineSlots() {
+            const slotIds = document.getElementById('combine-slot-ids').value.trim();
+            const newType = document.getElementById('combine-new-type').value;
+            const mins = document.getElementById('combine-mins').value.trim();
+            const rate = document.getElementById('combine-rate').value.trim();
+            const penalty = document.getElementById('combine-penalty').value.trim();
+
+            if (!slotIds || !newType || !mins || !rate || !penalty)
+                return setResult('combine-result',
+                    '⚠ All fields are required', true);
+
+            // basic client-side format check
+            if (!/^[\d,\s]+$/.test(slotIds))
+                return setResult('combine-result',
+                    '⚠ Slot IDs must be numbers separated by commas', true);
+
+            const ids = slotIds.split(',').map(s => s.trim()).filter(Boolean);
+            if (ids.length < 2)
+                return setResult('combine-result',
+                    '⚠ At least 2 slot IDs are required', true);
+
+            try {
+                const { ok, data } = await api('POST',
+                    'admin/slots/combine', {
+                    slot_ids: ids.join(','),
+                    new_type: newType,
+                    allowed_mins: mins,
+                    rate_per_hr: rate,
+                    penalty_per_hr: penalty
+                });
+
+                if (ok) {
+                    const s = data.slot;
+                    setResult('combine-result',
+                        `✅ Combined successfully!<br>New Slot ID: ${s.slot_id} · Type: ${s.type} (size ${s.size})<br>Floor: ${s.floor} · Row: ${s.slot_row} · Cols: ${s.col_start}–${s.col_end}`,
+                        false);
+                    document.getElementById('combine-slot-ids').value = '';
+                } else {
+                    setResult('combine-result',
+                        `❌ ${data.message || data.error}`, true);
+                }
+            } catch (e) {
+                setResult('combine-result', '❌ Network error', true);
+            }
+        }
+
+        // ── INIT ──────────────────────────────────────────────────────────
+        loadVehicleTypes();   // loads types from backend, populates all dropdowns
+        loadAllowedMins();    // loads distinct allowed_mins values for history filter dropdown
+        loadActive();         // load active vehicles on startup
+        loadVehicleSizes();   // load vehicle sizes for partition dropdowns
+    </script>
+</body>
+
+</html>

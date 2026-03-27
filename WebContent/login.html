@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParkOS — Login</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap"
+        rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #0a0a0f;
+            --surface: #12121a;
+            --border: #1e1e2e;
+            --accent: #00e5a0;
+            --accent2: #0077ff;
+            --text: #e8e8f0;
+            --muted: #5a5a7a;
+            --error: #ff4466;
+            --mono: 'Space Mono', monospace;
+            --sans: 'Syne', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 229, 160, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 229, 160, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            pointer-events: none;
+            animation: drift 8s ease-in-out infinite alternate;
+        }
+
+        .orb1 {
+            width: 400px;
+            height: 400px;
+            background: rgba(0, 229, 160, 0.08);
+            top: -100px;
+            left: -100px;
+        }
+
+        .orb2 {
+            width: 300px;
+            height: 300px;
+            background: rgba(0, 119, 255, 0.06);
+            bottom: -50px;
+            right: -50px;
+            animation-delay: -4s;
+        }
+
+        @keyframes drift {
+            from {
+                transform: translate(0, 0);
+            }
+
+            to {
+                transform: translate(30px, 20px);
+            }
+        }
+
+        .login-wrap {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+            animation: fadeUp 0.6s ease both;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(24px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .brand {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .brand-logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .brand-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--accent);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .brand-name {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            color: var(--text);
+        }
+
+        .brand-name span {
+            color: var(--accent);
+        }
+
+        .brand-sub {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 36px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .card-sub {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 28px;
+        }
+
+        .field {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 8px;
+        }
+
+        input {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 14px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 229, 160, 0.1);
+        }
+
+        input::placeholder {
+            color: var(--muted);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent);
+            color: #0a0a0f;
+            border: none;
+            border-radius: 8px;
+            font-family: var(--sans);
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: opacity 0.2s, transform 0.1s;
+            letter-spacing: 0.5px;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn:active {
+            transform: scale(0.99);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .error-msg {
+            background: rgba(255, 68, 102, 0.1);
+            border: 1px solid rgba(255, 68, 102, 0.3);
+            color: var(--error);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-family: var(--mono);
+            font-size: 12px;
+            margin-top: 14px;
+            display: none;
+        }
+
+        .error-msg.show {
+            display: block;
+        }
+
+        .footer-note {
+            text-align: center;
+            margin-top: 24px;
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .footer-note a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .footer-note a:hover {
+            text-decoration: underline;
+        }
+
+        .spinner {
+            display: none;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(0, 0, 0, 0.3);
+            border-top-color: #000;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+
+    <div class="login-wrap">
+        <div class="brand">
+            <div class="brand-logo">
+                <div class="brand-icon">🅿</div>
+                <div class="brand-name">Park<span>OS</span></div>
+            </div>
+            <div class="brand-sub">Vehicle Management System</div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Sign in</div>
+            <div class="card-sub">Enter your credentials to continue</div>
+
+            <div class="field">
+                <label>Username</label>
+                <input type="text" id="username" placeholder="enter username" autocomplete="username">
+            </div>
+
+            <div class="field">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+            </div>
+
+            <button class="btn" id="loginBtn" onclick="doLogin()">
+                <span class="spinner" id="spinner"></span>
+                Sign In
+            </button>
+
+            <div class="error-msg" id="errorMsg"></div>
+        </div>
+
+        <div class="footer-note">
+            ParkOS v1.0 &nbsp;·&nbsp; <a href="register.html">Create account</a>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Enter') doLogin();
+        });
+
+        async function doLogin() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('loginBtn');
+            const spinner = document.getElementById('spinner');
+            const errorMsg = document.getElementById('errorMsg');
+
+            if (!username || !password) {
+                showError('Username and password are required');
+                return;
+            }
+
+            btn.disabled = true;
+            spinner.style.display = 'inline-block';
+            errorMsg.classList.remove('show');
+
+            try {
+                const res = await fetch('login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.status === 'success') {
+                    if (data.role === 'admin') {
+                        window.location.href = 'admin.html';
+                    } else {
+                        window.location.href = 'dashboard.html';
+                    }
+                } else {
+                    showError(data.message || 'Invalid credentials');
+                }
+
+            } catch (err) {
+                showError('Connection error. Is the server running?');
+            } finally {
+                btn.disabled = false;
+                spinner.style.display = 'none';
+            }
+        }
+        function showError(msg) {
+            const el = document.getElementById('errorMsg');
+            el.textContent = msg;
+            el.classList.add('show');
+        }
+    </script>
+</body>
+
+</html>

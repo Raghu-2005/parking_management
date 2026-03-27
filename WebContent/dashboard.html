@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParkOS — Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        :root{--bg:#0a0a0f;--surface:#12121a;--surface2:#16161f;--border:#1e1e2e;--accent:#00e5a0;--accent2:#0077ff;--warn:#ffaa00;--error:#ff4466;--text:#e8e8f0;--muted:#5a5a7a;--mono:'Space Mono',monospace;--sans:'Syne',sans-serif}
+        body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
+        nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+        .nav-brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+        .nav-icon{width:32px;height:32px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px}
+        .nav-brand span{color:var(--accent)}
+        .nav-right{display:flex;align-items:center;gap:16px}
+        .nav-role{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:4px 10px;border-radius:20px}
+        .btn-logout{font-family:var(--mono);font-size:11px;color:var(--error);background:rgba(255,68,102,0.1);border:1px solid rgba(255,68,102,0.2);padding:6px 12px;border-radius:6px;cursor:pointer}
+        .btn-logout:hover{background:rgba(255,68,102,0.2)}
+        .layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 60px)}
+        aside{background:var(--surface);border-right:1px solid var(--border);padding:20px 12px}
+        .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;color:var(--muted);transition:all 0.15s;margin-bottom:4px}
+        .nav-item:hover{background:var(--bg);color:var(--text)}
+        .nav-item.active{background:rgba(0,229,160,0.1);color:var(--accent)}
+        .nav-item .icon{font-size:16px;width:20px;text-align:center}
+        .nav-section{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;padding:16px 12px 6px}
+        main{padding:28px;overflow-y:auto}
+        .page{display:none;animation:fadeIn 0.3s ease}
+        .page.active{display:block}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        .page-title{font-size:24px;font-weight:800;margin-bottom:4px}
+        .form-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px}
+        .form-card h3{font-size:16px;font-weight:600;margin-bottom:4px}
+        .form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:14px}
+        .field label{display:block;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px}
+        .field input,.field select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 12px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;transition:border-color 0.2s}
+        .field input:focus,.field select:focus{border-color:var(--accent)}
+        .field select option{background:var(--bg)}
+        .custom-type-input{display:none;margin-top:8px;width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 12px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none}
+        .custom-type-input:focus{border-color:var(--accent)}
+        .btn{padding:10px 20px;border:none;border-radius:7px;font-family:var(--sans);font-weight:700;font-size:13px;cursor:pointer;transition:opacity 0.2s}
+        .btn:hover{opacity:0.85}
+        .btn-primary{background:var(--accent);color:#0a0a0f}
+        .result-box{margin-top:14px;padding:14px;border-radius:8px;font-family:var(--mono);font-size:12px;line-height:1.7;display:none}
+        .result-box.success{background:rgba(0,229,160,0.08);border:1px solid rgba(0,229,160,0.2);color:var(--accent)}
+        .result-box.error{background:rgba(255,68,102,0.08);border:1px solid rgba(255,68,102,0.2);color:var(--error)}
+        .result-box.show{display:block}
+        .table-wrap{overflow-x:auto}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        th{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);text-align:left;padding:10px 14px;border-bottom:1px solid var(--border)}
+        td{padding:12px 14px;border-bottom:1px solid rgba(30,30,46,0.5);font-family:var(--mono);font-size:12px}
+        tr:hover td{background:rgba(255,255,255,0.02)}
+        .badge{display:inline-block;padding:3px 8px;border-radius:4px;font-family:var(--mono);font-size:10px;font-weight:700}
+        .badge-blue{background:rgba(0,119,255,0.15);color:var(--accent2)}
+        .empty-state{text-align:center;padding:40px;color:var(--muted);font-family:var(--mono);font-size:12px}
+        .avail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:16px}
+        .avail-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px}
+        .avail-floor{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:4px}
+        .avail-type{font-size:14px;font-weight:600;margin-bottom:8px}
+        .avail-count{font-size:28px;font-weight:800;color:var(--accent)}
+        .avail-sub{font-family:var(--mono);font-size:10px;color:var(--muted)}
+    </style>
+</head>
+<body>
+<nav>
+    <div class="nav-brand"><div class="nav-icon">🅿</div>Park<span>OS</span></div>
+    <div class="nav-right">
+        <span class="nav-role" id="nav-role-label">operator</span>
+        <button class="btn-logout" onclick="logout()">Sign out</button>
+    </div>
+</nav>
+<div class="layout">
+    <aside>
+        <div class="nav-section">Operations</div>
+        <div class="nav-item active" onclick="showPage('entry',this)"><span class="icon">🚗</span> Vehicle Entry</div>
+        <div class="nav-item" onclick="showPage('exit',this)"><span class="icon">🚪</span> Vehicle Exit</div>
+        <div class="nav-section">Info</div>
+        <div class="nav-item" onclick="showPage('availability',this)"><span class="icon">📊</span> Availability</div>
+        <div class="nav-item" onclick="showPage('lookup',this)"><span class="icon">🔍</span> Lookup Vehicle</div>
+        <div class="nav-item" onclick="showPage('history',this)"><span class="icon">📋</span> History</div>
+    </aside>
+    <main>
+
+        <!-- ENTRY -->
+        <div class="page active" id="page-entry">
+            <div class="page-title">Vehicle Entry</div>
+            <div class="form-card">
+                <h3>Park a Vehicle</h3>
+                <div class="form-row">
+                    <div class="field"><label>Number Plate *</label><input type="text" id="entry-plate" placeholder="TN01AB1234"></div>
+                    <div class="field">
+                        <label>Vehicle Type *</label>
+                        <select id="entry-type" onchange="handleTypeChange('entry-type','entry-type-custom')">
+                            <option value="">-- select --</option>
+                        </select>
+                        <input class="custom-type-input" id="entry-type-custom" placeholder="e.g. van, bus, ev">
+                    </div>
+                    <div class="field"><label>Floor (optional)</label><input type="number" id="entry-floor" placeholder="auto"></div>
+                    <div class="field"><label>Slot No (optional)</label><input type="number" id="entry-slot" placeholder="auto"></div>
+                </div>
+                <button class="btn btn-primary" onclick="doEntry()">🚗 Park Vehicle</button>
+                <div class="result-box" id="entry-result"></div>
+            </div>
+        </div>
+
+        <!-- EXIT -->
+        <div class="page" id="page-exit">
+            <div class="page-title">Vehicle Exit</div>
+            <div class="form-card">
+                <h3>Exit Vehicle</h3>
+                <div class="form-row">
+                    <div class="field"><label>Number Plate *</label><input type="text" id="exit-plate" placeholder="TN01AB1234"></div>
+                </div>
+                <button class="btn btn-primary" onclick="doExit()">🚪 Process Exit</button>
+                <div class="result-box" id="exit-result"></div>
+            </div>
+        </div>
+
+        <!-- AVAILABILITY -->
+        <div class="page" id="page-availability">
+            <div class="page-title">Slot Availability</div>
+            <div class="form-card">
+                <h3>Check Availability</h3>
+                <div class="form-row">
+                    <div class="field"><label>Floor (optional)</label><input type="number" id="avail-floor" placeholder="all floors"></div>
+                    <div class="field">
+                        <label>Vehicle Type (optional)</label>
+                        <select id="avail-type">
+                            <option value="">All types</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="doAvailability()">📊 Load Availability</button>
+            </div>
+            <div class="avail-grid" id="avail-grid"></div>
+        </div>
+
+        <!-- LOOKUP -->
+        <div class="page" id="page-lookup">
+            <div class="page-title">Vehicle Lookup</div>
+            <div class="form-card">
+                <h3>Look Up Vehicle</h3>
+                <div class="form-row">
+                    <div class="field"><label>Number Plate *</label><input type="text" id="lookup-plate" placeholder="TN01AB1234"></div>
+                </div>
+                <button class="btn btn-primary" onclick="doLookup()">🔍 Search</button>
+                <div class="result-box" id="lookup-result"></div>
+            </div>
+        </div>
+
+        <!-- HISTORY -->
+        <div class="page" id="page-history">
+            <div class="page-title">Parking History</div>
+            <div class="form-card">
+                <h3>Search History</h3>
+                <div class="form-row">
+                    <div class="field"><label>Number Plate *</label><input type="text" id="hist-plate" placeholder="TN01AB1234"></div>
+                </div>
+                <button class="btn btn-primary" onclick="doHistory()">📋 Load History</button>
+                <div class="result-box" id="hist-error"></div>
+            </div>
+            <div class="form-card" id="hist-table-wrap" style="display:none">
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Plate</th><th>Type</th><th>Floor</th><th>Slot</th><th>Entry</th><th>Exit</th><th>Duration</th><th>Bill (₹)</th></tr></thead>
+                        <tbody id="hist-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+let vehicleTypes = [];
+
+async function loadVehicleTypes() {
+    try {
+        const res = await fetch('admin/vehicle-types');
+        if (res.ok) {
+            const data = await res.json();
+            const all = new Set([...(data.types || []), ...(data.suggested || [])]);
+            vehicleTypes = [...all].sort();
+        }
+    } catch(e) {
+        vehicleTypes = ['auto','bike','bus','car','jeep','motorcycle','suv','truck','van'];
+    }
+    populateTypeDropdowns();
+}
+
+function populateTypeDropdowns() {
+    const typeOptions = vehicleTypes.map(t =>
+        `<option value="${t}">${t.charAt(0).toUpperCase() + t.slice(1)}</option>`
+    ).join('');
+
+    document.getElementById('entry-type').innerHTML =
+        '<option value="">-- select --</option>' + typeOptions + '<option value="custom">+ Custom type...</option>';
+
+    document.getElementById('avail-type').innerHTML =
+        '<option value="">All types</option>' + typeOptions;
+}
+
+function handleTypeChange(selectId, customId) {
+    const sel = document.getElementById(selectId);
+    const custom = document.getElementById(customId);
+    if (sel.value === 'custom') { custom.style.display = 'block'; custom.focus(); }
+    else { custom.style.display = 'none'; custom.value = ''; }
+}
+
+function getVehicleType(selectId, customId) {
+    const sel = document.getElementById(selectId);
+    const custom = document.getElementById(customId);
+    return sel.value === 'custom' ? custom.value.trim().toLowerCase() : sel.value;
+}
+
+async function checkAuth() {
+    try {
+        const res = await fetch('login', { method: 'GET' });
+        const data = await res.json();
+        if (!res.ok || data.status !== 'success') { window.location.href = 'login.html'; return; }
+        if (data.role === 'admin') { window.location.href = 'admin.html'; return; }
+        const roleLabel = document.getElementById('nav-role-label');
+        if (roleLabel) roleLabel.textContent = data.role || 'operator';
+    } catch(e) { window.location.href = 'login.html'; }
+}
+
+function showPage(id, el) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    el.classList.add('active');
+}
+
+function setResult(id, msg, isError) {
+    const el = document.getElementById(id);
+    el.className = 'result-box show ' + (isError ? 'error' : 'success');
+    el.innerHTML = msg;
+}
+
+async function api(method, url, params) {
+    const opts = { method, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } };
+    if (params && method !== 'GET') opts.body = new URLSearchParams(params).toString();
+    const res = await fetch(url, opts);
+    const data = await res.json();
+    if (res.status === 503) showServerBusy();
+    return { ok: res.ok, data, status: res.status };
+}
+
+function showServerBusy() {
+    const existing = document.getElementById('server-busy-banner');
+    if (existing) existing.remove();
+    const banner = document.createElement('div');
+    banner.id = 'server-busy-banner';
+    banner.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#b71c1c;color:white;padding:16px 32px;border-radius:8px;font-family:monospace;font-size:14px;z-index:9999;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.5)';
+    let s = 30;
+    banner.innerHTML = `⚠️ Server is busy — please wait <span id="busy-countdown">${s}</span>s before retrying`;
+    document.body.appendChild(banner);
+    const iv = setInterval(() => {
+        s--;
+        const el = document.getElementById('busy-countdown');
+        if (el) el.textContent = s;
+        if (s <= 0) { clearInterval(iv); banner.innerHTML = '✅ You can retry now'; banner.style.background = '#1b5e20'; setTimeout(() => banner.remove(), 3000); }
+    }, 1000);
+}
+
+async function doEntry() {
+    const plate = document.getElementById('entry-plate').value.trim();
+    const type = getVehicleType('entry-type', 'entry-type-custom');
+    const floor = document.getElementById('entry-floor').value.trim();
+    const slot = document.getElementById('entry-slot').value.trim();
+    if (!plate || !type) return setResult('entry-result', '⚠ Number plate and vehicle type are required', true);
+    const params = { number_plate: plate, vehicle_type: type };
+    if (floor) params.floor = floor;
+    if (slot) params.slot_num = slot;
+    try {
+        const { ok, data } = await api('POST', 'parking/entry', params);
+        if (ok) {
+            setResult('entry-result', `✅ Parked successfully!<br>Plate: ${data.number_plate} | Type: ${data.vehicle_type}<br>Floor: ${data.floor} | Slot: ${data.slot_num}<br>Entry Time: ${data.entry_time}`, false);
+        } else {
+            setResult('entry-result', `❌ ${data.message || data.error}`, true);
+        }
+    } catch(e) { setResult('entry-result', '❌ Network error', true); }
+}
+
+async function doExit() {
+    const plate = document.getElementById('exit-plate').value.trim();
+    if (!plate) return setResult('exit-result', '⚠ Number plate is required', true);
+    try {
+        const { ok, data } = await api('POST', 'parking/exit', { number_plate: plate });
+        if (ok) {
+            setResult('exit-result', `✅ Exit processed!<br>Plate: ${data.number_plate}<br>Duration: ${data.duration_minutes} mins<br>Amount Due: ₹${data.amount_due}<br>Penalty: ₹${data.penalty || 0}`, false);
+        } else {
+            setResult('exit-result', `❌ ${data.message || data.error}`, true);
+        }
+    } catch(e) { setResult('exit-result', '❌ Network error', true); }
+}
+
+async function doAvailability() {
+    const floor = document.getElementById('avail-floor').value.trim();
+    const type = document.getElementById('avail-type').value;
+    const grid = document.getElementById('avail-grid');
+    grid.innerHTML = '<div class="empty-state">Loading...</div>';
+    try {
+        let data, ok;
+        if (floor && type) {
+            ({ ok, data } = await api('GET', `parking/availability?floor=${floor}&vehicle_type=${type}`));
+        } else if (floor) {
+            ({ ok, data } = await api('GET', 'parking/availability/all'));
+            if (ok && data.availability) data.availability = data.availability.filter(f => f.floor == floor);
+        } else {
+            ({ ok, data } = await api('GET', 'parking/availability/all'));
+        }
+        grid.innerHTML = '';
+        const items = data.availability || (data.floor !== undefined ? [data] : []);
+        const validItems = items.filter(f => f.total && f.total > 0);
+        if (!validItems.length) { grid.innerHTML = '<div class="empty-state">No slots found for the selected filter</div>'; return; }
+        validItems.forEach(f => {
+            const isFull = f.free_count === 0;
+            grid.innerHTML += `<div class="avail-card" style="opacity:${isFull?'0.6':'1'}">
+                <div class="avail-floor">FLOOR ${f.floor}</div>
+                <div class="avail-type">${f.vehicle_type}</div>
+                <div class="avail-count" style="color:${isFull?'var(--error)':'var(--accent)'}">${f.free_count}</div>
+                <div class="avail-sub">of ${f.total} slots free${isFull?' — FULL':''}</div>
+            </div>`;
+        });
+    } catch(e) { grid.innerHTML = '<div class="empty-state">Error loading data</div>'; }
+}
+
+async function doLookup() {
+    const plate = document.getElementById('lookup-plate').value.trim();
+    if (!plate) return setResult('lookup-result', '⚠ Number plate is required', true);
+    try {
+        const { ok, data } = await api('GET', `parking/vehicle/${encodeURIComponent(plate)}`);
+        if (ok) {
+            setResult('lookup-result', `✅ Vehicle Found<br>Plate: ${data.number_plate}<br>Type: ${data.vehicle_type}<br>Floor: ${data.floor} | Slot: ${data.slot_num}<br>Entry: ${data.entry_time}`, false);
+        } else {
+            setResult('lookup-result', `❌ ${data.message || data.error}`, true);
+        }
+    } catch(e) { setResult('lookup-result', '❌ Network error', true); }
+}
+
+async function doHistory() {
+    const plate = document.getElementById('hist-plate').value.trim();
+    if (!plate) return setResult('hist-error', '⚠ Number plate is required', true);
+    const wrap = document.getElementById('hist-table-wrap');
+    const tbody = document.getElementById('hist-tbody');
+    try {
+        const { ok, data } = await api('GET', `parking/history/${encodeURIComponent(plate)}`);
+        if (ok) {
+            const records = data.history || [];
+            wrap.style.display = 'block';
+            tbody.innerHTML = records.length
+                ? records.map(r => `<tr>
+                    <td>${plate}</td>
+                    <td><span class="badge badge-blue">${r.vehicle_type}</span></td>
+                    <td>${r.floor}</td>
+                    <td>${r.slot_num}</td>
+                    <td>${r.entry_time}</td>
+                    <td>${r.exit_time}</td>
+                    <td>${r.total_mins} min</td>
+                    <td>₹${r.total_amount}</td>
+                </tr>`).join('')
+                : '<tr><td colspan="8" class="empty-state">No history found</td></tr>';
+            document.getElementById('hist-error').classList.remove('show');
+        } else {
+            wrap.style.display = 'none';
+            setResult('hist-error', `❌ ${data.message || 'Not found'}`, true);
+        }
+    } catch(e) { setResult('hist-error', '❌ Network error', true); }
+}
+
+async function logout() {
+    try { await fetch('logout', { method: 'POST' }); } catch(e) {}
+    window.location.href = 'login.html';
+}
+
+// Init
+checkAuth();
+loadVehicleTypes();
+</script>
+</body>
+</html>
