@@ -2863,7 +2863,14 @@
             if (isNaN(rs) || isNaN(re) || isNaN(cs) || isNaN(ce)) { setResult('blk-result', 'All four range fields are required', true); return; }
             if (re < rs || ce < cs) { setResult('blk-result', 'End values must be >= start values', true); return; }
             var inRegion = layoutSlots.filter(function(s){ return s.slot_row >= rs && s.slot_row <= re && s.col_start >= cs && s.col_end <= ce; });
-            var partial = layoutSlots.filter(function(s){ return s.slot_row >= rs && s.slot_row <= re && (s.col_start < cs || s.col_end > ce); });
+                        var partial = layoutSlots.filter(function(s){
+                if (s.slot_row < rs || s.slot_row > re) return false;
+                var startsInside = s.col_start >= cs && s.col_start <= ce;
+                var endsInside   = s.col_end   >= cs && s.col_end   <= ce;
+                var crossLeft  = s.col_start < cs && endsInside;
+                var crossRight = startsInside && s.col_end > ce;
+                return crossLeft || crossRight;
+            });
             var occupied = inRegion.filter(function(s){ return s.status === 'OCCUPIED'; });
             layoutPreviewSlots = new Set(inRegion.map(function(s){ return s.slot_id; }));
             layoutConflictSlots = new Set(partial.map(function(s){ return s.slot_id; }).concat(occupied.map(function(s){ return s.slot_id; })));
