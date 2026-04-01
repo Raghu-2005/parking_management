@@ -4,11 +4,20 @@ import com.parking.model.ActiveVehicle;
 import com.parking.model.Slot;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ParkingStore {
+    // Returns the full grid for a given floor (for UI visualization)
+    public int[][] getGrid(int floor) {
+        int[][] grid = gridMap.get(floor);
+        if (grid == null) {
+            return new int[0][0];
+        }
+        return grid;
+    }
 
     // ── SINGLETON ────────────────────────────────────────
     private static final ParkingStore INSTANCE = new ParkingStore();
@@ -21,6 +30,7 @@ public class ParkingStore {
         this.gridMap = new ConcurrentHashMap<>();
         this.slotMeta = new ConcurrentHashMap<>();
         this.vehicleSizes = new ConcurrentHashMap<>();
+        this.floorReportCache = new ConcurrentHashMap<>();
     }
 
     public static ParkingStore getInstance() {
@@ -79,6 +89,11 @@ public class ParkingStore {
     // Used by split/combine to validate size arithmetic.
     // O(1) lookup by type name.
     private final ConcurrentHashMap<String, Integer> vehicleSizes;
+
+    // Floor report cache: dateRangeKey → { floorNum → List of stat rows }
+    // Pre-loaded at startup, refreshed on every vehicle exit.
+    // Eliminates all DB queries for floor report requests.
+    private final ConcurrentHashMap<String, Map<Integer, List<Map<String, Object>>>> floorReportCache;
 
     // ── EXISTING METHODS (completely unchanged) ───────────
 
@@ -348,5 +363,25 @@ public class ParkingStore {
     // Returns a copy so callers cannot mutate the map.
     public java.util.Map<String, Integer> getAllVehicleSizes() {
         return new java.util.HashMap<>(vehicleSizes);
+    }
+
+    // ── FLOOR REPORT CACHE ────────────────────────────────
+
+    // Store a fully-built floor report (all floors, per-type + ALL rows)
+    // keyed by date range. Called after DB fetch or at startup.
+    public void putFloorReport(String key,
+            Map<Integer, List<Map<String, Object>>> data) {
+        floorReportCache.put(key, data);
+    }
+
+    // O(1) cache lookup. Returns null on miss.
+    public Map<Integer, List<Map<String, Object>>> getFloorReport(String key) {
+        return floorReportCache.get(key);
+    }
+
+    // Wipe all cached reports so the next request re-fetches.
+    // Called after every vehicle exit (history table changed).
+    public void clearFloorReportCache() {
+        floorReportCache.clear();
     }
 }

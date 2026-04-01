@@ -40,7 +40,7 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── GET ──────────────────────────────────────────────
+    // Handles all GET requests under /admin/*
     @Override
     protected void doGet(HttpServletRequest req,
             HttpServletResponse res)
@@ -75,18 +75,33 @@ public class AdminServlet extends BaseServlet {
 
         } else if ("/users".equals(path)) {
             handleGetAllUsers(req, res);
+
         } else if ("/history/search".equals(path)) {
             handleSearchHistory(req, res);
+
         } else if ("/history/page".equals(path)) {
             handleSearchHistoryPage(req, res);
+
         } else if (path.matches("/floor-report/\\d+")) {
             handleGetFloorReport(req, res, path);
+
         } else if ("/vehicle-types".equals(path)) {
             handleGetVehicleTypes(req, res);
+
         } else if ("/allowed-mins".equals(path)) {
             handleGetAllowedMins(req, res);
+
         } else if ("/vehicle-size".equals(path)) {
             handleGetVehicleSize(req, res);
+
+        } else if (path.startsWith("/layout/removed/")) {
+            int floor = Integer.parseInt(path.substring("/layout/removed/".length()));
+            handleGetRemovedSlots(req, res, floor);
+
+        } else if (path.startsWith("/layout/history/")) {
+            int floor = Integer.parseInt(path.substring("/layout/history/".length()));
+            handleGetRemovalHistory(req, res, "/layout/history/" + floor);
+
         } else {
             res.setStatus(404);
             res.getWriter().write(JsonUtil.error(
@@ -94,7 +109,7 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── POST ─────────────────────────────────────────────
+    // Handles all POST requests under /admin/*
     @Override
     protected void doPost(HttpServletRequest req,
             HttpServletResponse res)
@@ -133,6 +148,18 @@ public class AdminServlet extends BaseServlet {
         } else if ("/slots/combine".equals(path)) {
             handleCombineSlots(req, res);
 
+        } else if ("/layout/remove/block".equals(path)) {
+            handleRemoveBlock(req, res);
+
+        } else if ("/layout/remove/slots".equals(path)) {
+            handleRemoveSlots(req, res);
+
+        } else if ("/layout/rollback/block".equals(path)) {
+            handleRollbackBlock(req, res);
+
+        } else if ("/layout/rollback/slots".equals(path)) {
+            handleRollbackSlots(req, res);
+
         } else {
             res.setStatus(404);
             res.getWriter().write(JsonUtil.error(
@@ -140,7 +167,7 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── PUT ──────────────────────────────────────────────
+    // Handles all PUT requests under /admin/*
     @Override
     protected void doPut(HttpServletRequest req,
             HttpServletResponse res)
@@ -160,7 +187,7 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── DELETE ───────────────────────────────────────────
+    // Handles all DELETE requests under /admin/*
     @Override
     protected void doDelete(HttpServletRequest req,
             HttpServletResponse res)
@@ -191,27 +218,20 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── CREATE SLOT ──────────────────────────────────────
+    // POST /admin/slots — creates a new parking slot on the given floor
     private void handleCreateSlot(HttpServletRequest req,
             HttpServletResponse res)
             throws IOException {
 
         try {
-            int floor = Integer.parseInt(
-                    req.getParameter("floor"));
-            int slotNum = Integer.parseInt(
-                    req.getParameter("slot_num"));
+            int floor = Integer.parseInt(req.getParameter("floor"));
+            int slotNum = Integer.parseInt(req.getParameter("slot_num"));
             String type = req.getParameter("vehicle_type");
-            int allowedMins = Integer.parseInt(
-                    req.getParameter("allowed_mins"));
-            double rate = Double.parseDouble(
-                    req.getParameter("rate_per_hr"));
-            double penalty = Double.parseDouble(
-                    req.getParameter("penalty_per_hr"));
+            int allowedMins = Integer.parseInt(req.getParameter("allowed_mins"));
+            double rate = Double.parseDouble(req.getParameter("rate_per_hr"));
+            double penalty = Double.parseDouble(req.getParameter("penalty_per_hr"));
 
-            int slotId = service.createSlot(
-                    floor, slotNum, type,
-                    allowedMins, rate, penalty);
+            int slotId = service.createSlot(floor, slotNum, type, allowedMins, rate, penalty);
 
             res.setStatus(200);
             res.getWriter().write(
@@ -236,18 +256,18 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── UPDATE SLOT ──────────────────────────────────────
+    // PUT /admin/slots/{id} — updates billing config (allowed_mins, rate, penalty)
+    // for a slot
+    // Note: req.getParameter() returns null for PUT bodies in Jakarta Servlet,
+    // so the body is read manually and decoded from URL-encoded format.
     private void handleUpdateSlot(HttpServletRequest req,
             HttpServletResponse res,
             String path)
             throws IOException {
 
         try {
-            int slotId = Integer.parseInt(
-                    path.substring("/slots/".length()));
+            int slotId = Integer.parseInt(path.substring("/slots/".length()));
 
-            // PUT body must be read manually — req.getParameter()
-            // returns null for PUT in Jakarta Servlet
             StringBuilder sb = new StringBuilder();
             try (java.io.BufferedReader reader = req.getReader()) {
                 String line;
@@ -255,6 +275,7 @@ public class AdminServlet extends BaseServlet {
                     sb.append(line);
                 }
             }
+
             java.util.Map<String, String> params = new java.util.HashMap<>();
             for (String pair : sb.toString().split("&")) {
                 String[] kv = pair.split("=");
@@ -265,18 +286,14 @@ public class AdminServlet extends BaseServlet {
                 }
             }
 
-            int allowedMins = Integer.parseInt(
-                    params.get("allowed_mins"));
-            double rate = Double.parseDouble(
-                    params.get("rate_per_hr"));
-            double penalty = Double.parseDouble(
-                    params.get("penalty_per_hr"));
+            int allowedMins = Integer.parseInt(params.get("allowed_mins"));
+            double rate = Double.parseDouble(params.get("rate_per_hr"));
+            double penalty = Double.parseDouble(params.get("penalty_per_hr"));
 
             service.updateSlot(slotId, allowedMins, rate, penalty);
 
             res.setStatus(200);
-            res.getWriter().write(JsonUtil.success(
-                    "Slot updated successfully"));
+            res.getWriter().write(JsonUtil.success("Slot updated successfully"));
 
         } catch (NumberFormatException e) {
             res.setStatus(400);
@@ -291,21 +308,19 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── DELETE SLOT ──────────────────────────────────────
+    // DELETE /admin/slots/{id} — removes a slot permanently
     private void handleDeleteSlot(HttpServletRequest req,
             HttpServletResponse res,
             String path)
             throws IOException {
 
         try {
-            int slotId = Integer.parseInt(
-                    path.substring("/slots/".length()));
+            int slotId = Integer.parseInt(path.substring("/slots/".length()));
 
             service.deleteSlot(slotId);
 
             res.setStatus(200);
-            res.getWriter().write(JsonUtil.success(
-                    "Slot deleted successfully"));
+            res.getWriter().write(JsonUtil.success("Slot deleted successfully"));
 
         } catch (NumberFormatException e) {
             res.setStatus(400);
@@ -319,21 +334,22 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── GET SLOTS BY FLOOR ───────────────────────────────
+    // GET /admin/slots/{floor} — returns all slots on the given floor
+    private int safeGetLayoutVersion(int floor) {
+        try { return dao.getLayoutVersion(floor); } catch (Exception e) { return 1; }
+    }
     private void handleGetSlots(HttpServletRequest req,
             HttpServletResponse res,
             String path)
             throws IOException {
 
         try {
-            int floor = Integer.parseInt(
-                    path.substring("/slots/".length()));
+            int floor = Integer.parseInt(path.substring("/slots/".length()));
 
             List<Map<String, Object>> slots = service.getSlotsByFloor(floor);
 
             res.setStatus(200);
-            res.getWriter().write(
-                    JsonUtil.slotsResponse(floor, slots));
+            res.getWriter().write(JsonUtil.slotsResponse(floor, slots, safeGetLayoutVersion(floor)));
 
         } catch (NumberFormatException e) {
             res.setStatus(400);
@@ -347,14 +363,14 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── CREATE FLOOR ─────────────────────────────────────
+    // POST /admin/floors — creates a new floor with no slots
+    // After creation, add slots via POST /admin/slots
     private void handleCreateFloor(HttpServletRequest req,
             HttpServletResponse res)
             throws IOException {
 
         try {
-            int floor = Integer.parseInt(
-                    req.getParameter("floor"));
+            int floor = Integer.parseInt(req.getParameter("floor"));
 
             service.createFloor(floor);
 
@@ -376,7 +392,7 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── GET FLOORS ───────────────────────────────────────
+    // GET /admin/floors — returns all floors with their current status
     private void handleGetFloors(HttpServletRequest req,
             HttpServletResponse res)
             throws IOException {
@@ -385,8 +401,7 @@ public class AdminServlet extends BaseServlet {
             List<Map<String, Object>> floors = service.getAllFloors();
 
             res.setStatus(200);
-            res.getWriter().write(
-                    JsonUtil.floorsResponse(floors));
+            res.getWriter().write(JsonUtil.floorsResponse(floors));
 
         } catch (ParkingException e) {
             int status = resolveStatus(e.getErrorCode());
@@ -396,7 +411,8 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── BLOCK FLOOR ──────────────────────────────────────
+    // POST /admin/floors/{floor}/block — blocks a floor with a reason (no new
+    // parking allowed)
     private void handleBlockFloor(HttpServletRequest req,
             HttpServletResponse res,
             String path)
@@ -420,8 +436,7 @@ public class AdminServlet extends BaseServlet {
             res.getWriter().write(
                     "{"
                             + "\"status\":\"success\","
-                            + "\"message\":\"Floor " + floor
-                            + " blocked successfully\","
+                            + "\"message\":\"Floor " + floor + " blocked successfully\","
                             + "\"floor\":" + floor + ","
                             + "\"reason\":\"" + reason.trim() + "\""
                             + "}");
@@ -438,7 +453,8 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── UNBLOCK FLOOR ────────────────────────────────────
+    // DELETE /admin/floors/{floor}/block — unblocks a floor and resumes normal
+    // parking
     private void handleUnblockFloor(HttpServletRequest req,
             HttpServletResponse res,
             String path)
@@ -452,8 +468,7 @@ public class AdminServlet extends BaseServlet {
 
             res.setStatus(200);
             res.getWriter().write(JsonUtil.success(
-                    "Floor " + floor
-                            + " unblocked successfully. Parking resumed."));
+                    "Floor " + floor + " unblocked successfully. Parking resumed."));
 
         } catch (NumberFormatException e) {
             res.setStatus(400);
@@ -467,10 +482,10 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── GET ACTIVE VEHICLES ──────────────────────────────
-    // Optional params: floor (integer), type (car/bike/truck), page (1-based).
-    // When floor and/or type are provided, filters the result set.
-    // slot_num is joined inside the DAO — no N+1 DB calls.
+    // GET /admin/active-vehicles — returns currently parked vehicles
+    // Optional filters: floor (int), type (car/bike/truck), page (1-based, default
+    // 1)
+    // Results are paginated at 50 per page
     private void handleGetActiveVehicles(HttpServletRequest req,
             HttpServletResponse res)
             throws IOException {
@@ -533,9 +548,8 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── GET ALL HISTORY ──────────────────────────────────
-    // Paginated — page param (1-based), 50 rows per page.
-    // Never loads all rows — safe on 10M+ table.
+    // GET /admin/history — returns paginated parking history (50 records per page)
+    // Use the page param (1-based) to navigate; safe for large tables
     private void handleGetAllHistory(HttpServletRequest req,
             HttpServletResponse res)
             throws IOException {
@@ -554,8 +568,7 @@ public class AdminServlet extends BaseServlet {
             List<BillResult> history = service.getAllHistory(page, PAGE_SIZE);
 
             res.setStatus(200);
-            res.getWriter().write(
-                    JsonUtil.historyResponse("ALL", history));
+            res.getWriter().write(JsonUtil.historyResponse("ALL", history));
 
         } catch (ParkingException e) {
             int status = resolveStatus(e.getErrorCode());
@@ -565,9 +578,7 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── GET PENDING USERS ─────────────────────────────────
-    // Any active admin can see and approve all pending users,
-    // including pending admin registrations.
+    // GET /admin/pending-users — lists all users awaiting admin approval
     private void handleGetPendingUsers(HttpServletRequest req,
             HttpServletResponse res) throws IOException {
         try {
@@ -597,7 +608,7 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── APPROVE USER ──────────────────────────────────────
+    // POST /admin/users/{id}/approve — approves a pending user registration
     private void handleApproveUser(HttpServletRequest req,
             HttpServletResponse res,
             String path) throws IOException {
@@ -605,16 +616,15 @@ public class AdminServlet extends BaseServlet {
             int userId = Integer.parseInt(path.split("/")[2]);
             dao.approveUser(userId);
             res.setStatus(200);
-            res.getWriter().write(JsonUtil.success(
-                    "User approved successfully"));
+            res.getWriter().write(JsonUtil.success("User approved successfully"));
         } catch (Exception e) {
             res.setStatus(500);
-            res.getWriter().write(JsonUtil.error(
-                    "DB_ERROR", e.getMessage()));
+            res.getWriter().write(JsonUtil.error("DB_ERROR", e.getMessage()));
         }
     }
 
-    // ── REJECT USER ───────────────────────────────────────
+    // POST /admin/users/{id}/reject — rejects and removes a pending user
+    // registration
     private void handleRejectUser(HttpServletRequest req,
             HttpServletResponse res,
             String path) throws IOException {
@@ -622,16 +632,15 @@ public class AdminServlet extends BaseServlet {
             int userId = Integer.parseInt(path.split("/")[2]);
             dao.rejectUser(userId);
             res.setStatus(200);
-            res.getWriter().write(JsonUtil.success(
-                    "User rejected successfully"));
+            res.getWriter().write(JsonUtil.success("User rejected successfully"));
         } catch (Exception e) {
             res.setStatus(500);
-            res.getWriter().write(JsonUtil.error(
-                    "DB_ERROR", e.getMessage()));
+            res.getWriter().write(JsonUtil.error("DB_ERROR", e.getMessage()));
         }
     }
 
-    // ── ADMIN CHECK ──────────────────────────────────────
+    // Checks that the request comes from a logged-in admin.
+    // Returns false and writes the appropriate error response if the check fails.
     private boolean isAdmin(HttpServletRequest req,
             HttpServletResponse res)
             throws IOException {
@@ -646,15 +655,14 @@ public class AdminServlet extends BaseServlet {
         if (!LoginServlet.isAdmin(req)) {
             res.setStatus(403);
             res.getWriter().write(JsonUtil.error(
-                    "UNAUTHORIZED",
-                    "Admin access required"));
+                    "UNAUTHORIZED", "Admin access required"));
             return false;
         }
 
         return true;
     }
 
-    // ── RESOLVE HTTP STATUS ──────────────────────────────
+    // Maps a ParkingException error code to the appropriate HTTP status code
     private int resolveStatus(String code) {
         switch (code) {
             case "UNAUTHORIZED":
@@ -681,7 +689,7 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── GET ALL USERS (any active admin) ──────────────────
+    // GET /admin/users — returns all registered users with their status and role
     private void handleGetAllUsers(HttpServletRequest req,
             HttpServletResponse res) throws IOException {
         try {
@@ -711,20 +719,15 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── SEARCH HISTORY ───────────────────────────────────
-    // Single endpoint handles both initial search and page jumps.
-    // page param defaults to 1 if not given.
-    // All filters are optional — only given params are added to SQL.
-    // Default 30-day window applied when no date given — ensures BRIN activates.
-    //
-    // Direct page jump example:
-    // GET /admin/history/search?floor=1&type=car&page=7
-    // Backend: OFFSET = (7-1) × 50 = 300 — no stored IDs needed
-    //
+    // GET /admin/history/search — filtered, paginated history search
+    // All filters are optional. Supports: floor, slot, type, plate,
+    // from/to (yyyy-MM-dd or yyyy-MM-ddTHH:mm), preset (today/week/month),
+    // penalty_only, min/max penalty, min/max amount, allowed_mins,
+    // min/max total_mins, min_extra_mins, page (default 1).
+    // Defaults to the last 30 days when no date range is provided.
     private void handleSearchHistory(HttpServletRequest req,
             HttpServletResponse res) throws IOException {
         try {
-            // ── parse all filter params ───────────────────────────────
             Integer floor = parseIntParam(req, "floor");
             Integer slot = parseIntParam(req, "slot");
             String type = req.getParameter("type");
@@ -742,7 +745,6 @@ public class AdminServlet extends BaseServlet {
             Integer maxTotalMins = parseIntParam(req, "max_total_mins");
             Integer minExtraMins = parseIntParam(req, "min_extra_mins");
 
-            // ── page param — defaults to 1 ────────────────────────────
             int page = 1;
             String pageParam = req.getParameter("page");
             if (pageParam != null && !pageParam.trim().isEmpty()) {
@@ -753,7 +755,7 @@ public class AdminServlet extends BaseServlet {
             }
             final int PAGE_SIZE = 50;
 
-            // ── preset shortcuts ──────────────────────────────────────
+            // Apply preset date shortcuts
             if (preset != null) {
                 LocalDateTime now = LocalDateTime.now();
                 switch (preset) {
@@ -772,10 +774,9 @@ public class AdminServlet extends BaseServlet {
                 }
             }
 
-            // ── DEFAULT DATE WINDOW ───────────────────────────────────
-            // No date given → apply last 30 days automatically.
-            // This anchors the BRIN index on exit_date so it always activates.
-            // Without this, floor-only or type-only filter = full seq scan.
+            // Default to last 30 days when no date range is given.
+            // This ensures the BRIN index on exit_date is always used,
+            // preventing full sequential scans on large tables.
             if (from == null && to == null) {
                 to = LocalDateTime.now();
                 from = to.minusDays(30);
@@ -786,8 +787,7 @@ public class AdminServlet extends BaseServlet {
             if (plate != null && plate.trim().isEmpty())
                 plate = null;
 
-            // ── STATS: total_count, total_revenue, total_penalty ──────
-            // Cached 60 seconds — multiple admins with same filter hit cache
+            // Fetch summary stats (total count, revenue, penalty) for the applied filters
             Map<String, Object> stats = dao.getFilteredHistoryStats(
                     floor, slot, type, plate, from, to, penaltyOnly,
                     minPenalty, maxPenalty, minAmount, maxAmount,
@@ -796,16 +796,13 @@ public class AdminServlet extends BaseServlet {
             int totalCount = ((Number) stats.get("total_count")).intValue();
             int totalPages = (int) Math.ceil((double) totalCount / PAGE_SIZE);
 
-            // ── DATA: exactly PAGE_SIZE rows for requested page ───────
-            // OFFSET = (page-1) × PAGE_SIZE
-            // BRIN narrows table to date window first → OFFSET is fast
+            // Fetch one page of matching records
             List<Map<String, Object>> rows = dao.getFilteredHistoryPage(
                     floor, slot, type, plate, from, to, penaltyOnly,
                     minPenalty, maxPenalty, minAmount, maxAmount,
                     allowedMins, minTotalMins, maxTotalMins, minExtraMins,
                     page, PAGE_SIZE);
 
-            // ── BUILD RESPONSE ────────────────────────────────────────
             StringBuilder sb = new StringBuilder();
             sb.append("{\"status\":\"success\",");
             sb.append("\"metadata\":{");
@@ -832,10 +829,9 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── SEARCH HISTORY PAGE — direct page jump ────────────────────────
-    // Accepts page number + all filter params — recalculates OFFSET server-side.
-    // No ID list needed. No previous pages needed.
-    // URL: GET /admin/history/page?floor=1&type=car&page=7
+    // GET /admin/history/page — fetches a specific page for an existing search
+    // Pass the same filter params along with the desired page number.
+    // The offset is calculated server-side as (page-1) × 50.
     private void handleSearchHistoryPage(HttpServletRequest req,
             HttpServletResponse res) throws IOException {
         try {
@@ -896,7 +892,8 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── SHARED: append records array into StringBuilder ───────────────
+    // Shared helper — appends a list of history records as JSON into the given
+    // StringBuilder
     private void appendHistoryRecords(StringBuilder sb,
             List<Map<String, Object>> rows) {
         for (int i = 0; i < rows.size(); i++) {
@@ -921,7 +918,8 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── PARAM HELPERS ─────────────────────────────────────
+    // Tries to parse a query parameter as Integer. Returns null if missing or
+    // invalid.
     private Integer parseIntParam(HttpServletRequest req, String name) {
         String val = req.getParameter(name);
         if (val == null || val.trim().isEmpty())
@@ -933,6 +931,7 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
+    // Tries to parse a query parameter as Long. Returns null if missing or invalid.
     private Long parseLongParam(HttpServletRequest req, String name) {
         String val = req.getParameter(name);
         if (val == null || val.trim().isEmpty())
@@ -944,6 +943,8 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
+    // Tries to parse a query parameter as Double. Returns null if missing or
+    // invalid.
     private Double parseDoubleParam(HttpServletRequest req, String name) {
         String val = req.getParameter(name);
         if (val == null || val.trim().isEmpty())
@@ -955,6 +956,8 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
+    // Parses a date query parameter in "yyyy-MM-ddTHH:mm" or "yyyy-MM-dd" format.
+    // Returns null if the param is missing or cannot be parsed.
     private LocalDateTime parseDateParam(HttpServletRequest req, String name) {
         String val = req.getParameter(name);
         if (val == null || val.trim().isEmpty())
@@ -972,27 +975,14 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── GET VEHICLE TYPES ─────────────────────────────────
-    // GET /admin/vehicle-types
-    // Returns all distinct vehicle types that have slots defined in the DB.
-    // The frontend uses this to populate the vehicle type dropdown.
-    // Any type the admin created slots for appears here automatically.
-    // Response also includes a list of common suggested types so the frontend
-    // can show a "custom" option for types not yet in the system.
-    //
-    // Example response:
-    // {
-    // "status":"success",
-    // "types":["bike","bus","car","truck","van"],
-    // "suggested":["auto","ambulance","bicycle","bus","car","jeep",
-    // "minibus","motorcycle","suv","tractor","truck","van"]
-    // }
+    // GET /admin/vehicle-types — returns all vehicle types that have slots defined,
+    // plus a suggested list for populating the dropdown before any custom type is
+    // added
     private void handleGetVehicleTypes(HttpServletRequest req,
             HttpServletResponse res) throws IOException {
         try {
             List<String> types = dao.getDistinctVehicleTypes();
 
-            // common types shown in dropdown even before admin creates slots for them
             String[] suggested = {
                     "auto", "ambulance", "bicycle", "bus", "car",
                     "jeep", "minibus", "motorcycle", "suv",
@@ -1024,10 +1014,8 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── GET ALLOWED MINS ──────────────────────────────────
-    // GET /admin/allowed-mins
-    // Returns distinct allowed_mins values from parking_history.
-    // Used to populate the allowed_mins dropdown in history filters.
+    // GET /admin/allowed-mins — returns distinct allowed_mins values from history
+    // Used to populate the allowed_mins filter dropdown in the history search UI
     private void handleGetAllowedMins(HttpServletRequest req,
             HttpServletResponse res) throws IOException {
         try {
@@ -1049,34 +1037,21 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── FLOOR REPORT ─────────────────────────────────────
-    // Optional params: from (yyyy-MM-dd or yyyy-MM-ddTHH:mm), to (same)
-    // Returns per-vehicle-type breakdown + ALL grand total row.
-    //
-    // Example response:
-    // {
-    // "status":"success",
-    // "floor":1,
-    // "period":{"from":"2026-01-01","to":"2026-03-17"},
-    // "breakdown":[
-    // {"vehicle_type":"car","total_vehicles":120,"total_revenue":24000.00,
-    // "total_penalty":1200.00,"avg_duration_mins":45.5,"max_duration_mins":180},
-    // {"vehicle_type":"bike",...},
-    // {"vehicle_type":"ALL","total_vehicles":200,"total_revenue":35000.00,...}
-    // ]
-    // }
+    // GET /admin/floor-report/{floor} — returns per-vehicle-type revenue breakdown
+    // for a floor
+    // Optional params: from, to (yyyy-MM-dd or yyyy-MM-ddTHH:mm), preset
+    // (today/week/month)
+    // Defaults to last 30 days when no date range is provided
     private void handleGetFloorReport(HttpServletRequest req,
             HttpServletResponse res,
             String path) throws IOException {
 
         try {
-            int floor = Integer.parseInt(
-                    path.substring("/floor-report/".length()));
+            int floor = Integer.parseInt(path.substring("/floor-report/".length()));
 
             LocalDateTime from = parseDateParam(req, "from");
             LocalDateTime to = parseDateParam(req, "to");
 
-            // apply preset shortcuts identical to history search
             String preset = req.getParameter("preset");
             if (preset != null) {
                 LocalDateTime now = LocalDateTime.now();
@@ -1096,10 +1071,8 @@ public class AdminServlet extends BaseServlet {
                 }
             }
 
-            // ── DEFAULT DATE WINDOW ───────────────────────────────────
-            // floor_num alone on 10M+ rows = full sequential scan.
-            // Defaulting to last 30 days anchors the BRIN index on exit_date
-            // so only the relevant disk blocks are read.
+            // Default to last 30 days when no date range is given,
+            // so the BRIN index on exit_date is used instead of a full table scan
             if (from == null && to == null) {
                 to = LocalDateTime.now();
                 from = to.minusDays(30);
@@ -1110,8 +1083,6 @@ public class AdminServlet extends BaseServlet {
             StringBuilder sb = new StringBuilder();
             sb.append("{\"status\":\"success\",");
             sb.append("\"floor\":").append(floor).append(",");
-
-            // period block — tells caller what date range was applied
             sb.append("\"period\":{");
             sb.append("\"from\":").append(from != null
                     ? "\"" + from.toLocalDate() + "\""
@@ -1120,7 +1091,6 @@ public class AdminServlet extends BaseServlet {
                     ? "\"" + to.toLocalDate() + "\""
                     : "null");
             sb.append("},");
-
             sb.append("\"breakdown\":[");
             for (int i = 0; i < breakdown.size(); i++) {
                 Map<String, Object> r = breakdown.get(i);
@@ -1151,10 +1121,10 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── GET /admin/vehicle-size ───────────────────────────
-    // Returns all vehicle types and their sizes.
-    // Used by admin UI before split/combine to know what
-    // target types are available and what sizes they map to.
+    // GET /admin/vehicle-size — returns all vehicle types with their slot size
+    // units
+    // Used by the admin UI before split/combine to know what target types are
+    // available
     private void handleGetVehicleSize(HttpServletRequest req,
             HttpServletResponse res) throws IOException {
 
@@ -1185,16 +1155,9 @@ public class AdminServlet extends BaseServlet {
         }
     }
 
-    // ── POST /admin/slots/{id}/split ──────────────────────
-    // Splits slot {id} into smaller slots of new_type.
-    //
-    // Request params:
-    // new_type (required) — target vehicle type
-    // allowed_mins (required) — billing config for children
-    // rate_per_hr (required)
-    // penalty_per_hr (required)
-    //
-    // Response: JSON array of created child slots
+    // POST /admin/slots/{id}/split — splits a slot into smaller child slots of a
+    // new vehicle type
+    // Required params: new_type, allowed_mins, rate_per_hr, penalty_per_hr
     private void handleSplitSlot(HttpServletRequest req,
             HttpServletResponse res,
             String path) throws IOException {
@@ -1247,7 +1210,6 @@ public class AdminServlet extends BaseServlet {
                 if (i > 0)
                     sb.append(",");
                 Map<String, Object> c = children.get(i);
-
                 sb.append("{")
                         .append("\"slot_id\":").append(c.get("slot_id"))
                         .append(",\"floor\":").append(c.get("floor"))
@@ -1275,25 +1237,17 @@ public class AdminServlet extends BaseServlet {
                     : "SLOT_OCCUPIED".equals(e.getErrorCode())
                             ? 409
                             : 400;
-
             res.setStatus(status);
-            res.getWriter().write(
-                    JsonUtil.error(e.getErrorCode(), e.getMessage()));
+            res.getWriter().write(JsonUtil.error(e.getErrorCode(), e.getMessage()));
         }
     }
 
-    // ── POST /admin/slots/combine ─────────────────────────
-    // Combines multiple adjacent slots into one larger slot.
-    //
-    // Request params:
-    // slot_ids (required) — comma-separated slot ids
-    // e.g. "7,8" or "3,4,5,6"
-    // new_type (required) — target vehicle type
-    // allowed_mins (required)
-    // rate_per_hr (required)
-    // penalty_per_hr (required)
-    //
-    // Response: JSON object of the merged slot
+    // POST /admin/slots/combine — merges adjacent slots into one larger slot
+    // Required params:
+    // slot_ids — comma-separated slot IDs, e.g. "7,8" or "3,4,5,6"
+    // new_type — target vehicle type for the merged slot
+    // allowed_mins, rate_per_hr, penalty_per_hr — billing config for the merged
+    // slot
     private void handleCombineSlots(HttpServletRequest req,
             HttpServletResponse res) throws IOException {
 
@@ -1356,14 +1310,228 @@ public class AdminServlet extends BaseServlet {
         } catch (ParkingException e) {
             int status = "SLOT_NOT_FOUND".equals(e.getErrorCode()) ? 404
                     : "SLOT_OCCUPIED".equals(e.getErrorCode()) ? 409
-                            : "NOT_ADJACENT".equals(e.getErrorCode()) ? 400
-                                    : "INVALID_COMBINE".equals(e.getErrorCode()) ? 400
-                                            : "INVALID_SPLIT".equals(e.getErrorCode()) ? 400 : 400;
-
+                            : 400;
             res.setStatus(status);
-            res.getWriter().write(
-                    JsonUtil.error(e.getErrorCode(), e.getMessage()));
+            res.getWriter().write(JsonUtil.error(e.getErrorCode(), e.getMessage()));
         }
+    }
+    // ── LAYOUT REMOVAL ───────────────────────────────────────────────────────
+
+    // POST /admin/layout/remove/block
+    private void handleRemoveBlock(HttpServletRequest req,
+            HttpServletResponse res) throws IOException {
+        try {
+            int floor    = Integer.parseInt(req.getParameter("floor_num"));
+            int rowStart = Integer.parseInt(req.getParameter("row_start"));
+            int rowEnd   = Integer.parseInt(req.getParameter("row_end"));
+            int colStart = Integer.parseInt(req.getParameter("col_start"));
+            int colEnd   = Integer.parseInt(req.getParameter("col_end"));
+            String reason = req.getParameter("reason");
+            String removedBy = (String) req.getSession(false).getAttribute("username");
+
+            Map<String, Object> result = service.removeBlock(
+                floor, rowStart, rowEnd, colStart, colEnd, reason, removedBy);
+            res.setStatus(result.get("success").equals(true) ? 200 : 409);
+            res.getWriter().write(layoutResultJson(result));
+        } catch (ParkingException e) {
+            res.setStatus(resolveStatus(e.getErrorCode()));
+            res.getWriter().write(JsonUtil.error(e.getErrorCode(), e.getMessage()));
+        } catch (Exception e) {
+            res.setStatus(400);
+            res.getWriter().write(JsonUtil.error("INVALID_PARAMS",
+                "Invalid request body: " + e.getMessage()));
+        }
+    }
+
+    // POST /admin/layout/remove/slots
+    private void handleRemoveSlots(HttpServletRequest req,
+            HttpServletResponse res) throws IOException {
+        try {
+            int floor = Integer.parseInt(req.getParameter("floor_num"));
+            String rawIds = req.getParameter("slot_ids");
+            List<Integer> slotIds = new java.util.ArrayList<>();
+            if (rawIds != null) {
+                for (String s : rawIds.split(",")) {
+                    String t = s.trim();
+                    if (!t.isEmpty()) slotIds.add(Integer.parseInt(t));
+                }
+            }
+            String reason = req.getParameter("reason");
+            String removedBy = (String) req.getSession(false).getAttribute("username");
+
+            Map<String, Object> result = service.removeSlots(
+                floor, slotIds, reason, removedBy);
+            res.setStatus(result.get("success").equals(true) ? 200 : 409);
+            res.getWriter().write(layoutResultJson(result));
+        } catch (ParkingException e) {
+            res.setStatus(resolveStatus(e.getErrorCode()));
+            res.getWriter().write(JsonUtil.error(e.getErrorCode(), e.getMessage()));
+        } catch (Exception e) {
+            res.setStatus(400);
+            res.getWriter().write(JsonUtil.error("INVALID_PARAMS",
+                "Invalid request body: " + e.getMessage()));
+        }
+    }
+
+    // POST /admin/layout/rollback/block
+    private void handleRollbackBlock(HttpServletRequest req,
+            HttpServletResponse res) throws IOException {
+        try {
+            int floor    = Integer.parseInt(req.getParameter("floor_num"));
+            int rowStart = Integer.parseInt(req.getParameter("row_start"));
+            int rowEnd   = Integer.parseInt(req.getParameter("row_end"));
+            int colStart = Integer.parseInt(req.getParameter("col_start"));
+            int colEnd   = Integer.parseInt(req.getParameter("col_end"));
+            String restoredBy = (String) req.getSession(false).getAttribute("username");
+            Map<String, Object> result = service.rollbackBlock(
+                floor, rowStart, rowEnd, colStart, colEnd, restoredBy);
+            res.setStatus(200);
+            res.getWriter().write(layoutResultJson(result));
+        } catch (ParkingException e) {
+            res.setStatus(resolveStatus(e.getErrorCode()));
+            res.getWriter().write(JsonUtil.error(e.getErrorCode(), e.getMessage()));
+        } catch (Exception e) {
+            res.setStatus(400);
+            res.getWriter().write(JsonUtil.error("INVALID_PARAMS",
+                "Invalid request: " + e.getMessage()));
+        }
+    }
+
+    // POST /admin/layout/rollback/slots
+    private void handleRollbackSlots(HttpServletRequest req,
+            HttpServletResponse res) throws IOException {
+        try {
+            int floor = Integer.parseInt(req.getParameter("floor_num"));
+            String raw = req.getParameter("slot_ids");
+            String restoredBy = (String) req.getSession(false).getAttribute("username");
+            List<Integer> slotIds = new java.util.ArrayList<>();
+            if (raw != null) {
+                for (String s : raw.split(",")) {
+                    String t = s.trim();
+                    if (!t.isEmpty()) slotIds.add(Integer.parseInt(t));
+                }
+            }
+            Map<String, Object> result = service.rollbackSlots(floor, slotIds, restoredBy);
+            res.setStatus(200);
+            res.getWriter().write(layoutResultJson(result));
+        } catch (ParkingException e) {
+            res.setStatus(resolveStatus(e.getErrorCode()));
+            res.getWriter().write(JsonUtil.error(e.getErrorCode(), e.getMessage()));
+        } catch (Exception e) {
+            res.setStatus(400);
+            res.getWriter().write(JsonUtil.error("INVALID_PARAMS",
+                "Invalid request: " + e.getMessage()));
+        }
+    }
+
+    // GET /admin/layout/removed/{floor}
+    // GET /admin/layout/removed/{floor}
+    private void handleGetRemovedSlots(HttpServletRequest req,
+            HttpServletResponse res, int floor) throws IOException {
+        try {
+            List<Map<String, Object>> slots = service.getRemovedSlotsByFloor(floor);
+            StringBuilder sb = new StringBuilder();
+            sb.append("{");
+            sb.append("\"slots\":[");
+            for (int i = 0; i < slots.size(); i++) {
+                Map<String, Object> s = slots.get(i);
+                if (i > 0) sb.append(",");
+                sb.append("{");
+                sb.append("\"slot_id\":").append(s.get("slot_id")).append(",");
+                sb.append("\"slot_num\":").append(s.get("slot_num")).append(",");
+                sb.append("\"vehicle_type\":\"").append(s.get("vehicle_type")).append("\",");
+                sb.append("\"slot_row\":").append(s.get("slot_row")).append(",");
+                sb.append("\"col_start\":").append(s.get("col_start")).append(",");
+                sb.append("\"col_end\":").append(s.get("col_end")).append(",");
+                sb.append("\"size\":").append(s.get("size"));
+                sb.append("}");
+            }
+            sb.append("]}");
+            res.getWriter().write(sb.toString());
+        } catch (ParkingException e) {
+            res.setStatus(resolveStatus(e.getErrorCode()));
+            res.getWriter().write(JsonUtil.error(e.getErrorCode(), e.getMessage()));
+        } catch (Exception e) {
+            res.setStatus(500);
+            res.getWriter().write(JsonUtil.error("DB_ERROR", e.getMessage()));
+        }
+    }
+
+    // GET /admin/layout/history/{floor}
+    private void handleGetRemovalHistory(HttpServletRequest req,
+            HttpServletResponse res, String path) throws IOException {
+        try {
+            int floor = Integer.parseInt(path.split("/")[3]);
+            List<Map<String, Object>> history = service.getRemovalHistory(floor);
+            StringBuilder sb = new StringBuilder();
+            sb.append("{\"status\":\"success\",\"floor\":").append(floor)
+              .append(",\"history\":[");
+            for (int i = 0; i < history.size(); i++) {
+                Map<String, Object> r = history.get(i);
+                sb.append("{");
+                sb.append("\"id\":").append(r.get("id")).append(",");
+                sb.append("\"floor_num\":").append(r.get("floor_num")).append(",");
+                sb.append("\"row_start\":").append(r.get("row_start")).append(",");
+                sb.append("\"row_end\":").append(r.get("row_end")).append(",");
+                sb.append("\"col_start\":").append(r.get("col_start")).append(",");
+                sb.append("\"col_end\":").append(r.get("col_end")).append(",");
+                @SuppressWarnings("unchecked")
+                java.util.List<Integer> ids = r.get("slot_ids") != null ? (java.util.List<Integer>) r.get("slot_ids") : new java.util.ArrayList<>();
+                sb.append("\"slot_ids\":").append(ids.toString()).append(",").append("\"slot_count\":").append(ids.size()).append(",");
+                sb.append("\"reason\":").append(lqQuote((String) r.get("reason"))).append(",");
+                sb.append("\"removed_by\":").append(lqQuote((String) r.get("removed_by"))).append(",");
+                sb.append("\"removed_at\":").append(lqQuote((String) r.get("removed_at"))).append(",");
+                sb.append("\"layout_version\":").append(r.get("layout_version_at_removal"));
+                sb.append("}");
+                if (i < history.size() - 1) sb.append(",");
+            }
+            sb.append("]}");
+            res.setStatus(200);
+            res.getWriter().write(sb.toString());
+        } catch (ParkingException e) {
+            res.setStatus(resolveStatus(e.getErrorCode()));
+            res.getWriter().write(JsonUtil.error(e.getErrorCode(), e.getMessage()));
+        }
+    }
+
+    private String layoutResultJson(Map<String, Object> r) {
+        StringBuilder sb = new StringBuilder("{");
+        sb.append("\"success\":").append(r.get("success")).append(",");
+        if (r.get("conflict") == null) {
+            sb.append("\"conflict\":null,");
+        } else {
+            sb.append("\"conflict\":").append(lqQuote(r.get("conflict").toString())).append(",");
+        }
+        if (r.containsKey("slots_removed")) {
+            sb.append("\"slots_removed\":").append(r.get("slots_removed")).append(",");
+            sb.append("\"layout_version\":").append(r.get("layout_version")).append(",");
+            sb.append("\"removed_region_id\":").append(r.get("removed_region_id"));
+        } else {
+            @SuppressWarnings("unchecked")
+            List<?> details = (List<?>) r.get("details");
+            sb.append("\"details\":[");
+            for (int i = 0; i < details.size(); i++) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> d = (Map<String, Object>) details.get(i);
+                sb.append("{");
+                if (d.containsKey("slot_id")) {
+                    sb.append("\"slot_id\":").append(d.get("slot_id"));
+                    sb.append(",\"number_plate\":").append(lqQuote((String) d.get("number_plate")));
+                } else {
+                    sb.append("\"slot_id\":").append(d.get("slot_id"));
+                }
+                sb.append("}");
+                if (i < details.size() - 1) sb.append(",");
+            }
+            sb.append("]");
+        }
+        sb.append("}");
+        return sb.toString();
+    }
+
+    private String lqQuote(String s) {
+        if (s == null) return "null";
+        return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
     }
 
 }

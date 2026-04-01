@@ -9,14 +9,16 @@ import com.parking.util.JsonUtil;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
-
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+
 
 @WebServlet("/parking/*")
 public class ParkingServlet extends BaseServlet {
@@ -30,8 +32,7 @@ public class ParkingServlet extends BaseServlet {
         service = (ParkingService) getServletContext()
                 .getAttribute("parkingService");
         if (service == null) {
-            throw new ServletException(
-                    "ParkingService not found in context");
+            throw new ServletException("ParkingService not found in context");
         }
     }
 
@@ -41,7 +42,6 @@ public class ParkingServlet extends BaseServlet {
             HttpServletResponse res)
             throws ServletException, IOException {
 
-        // check login
         if (!LoginServlet.isAuthorized(req)) {
             res.setStatus(401);
             res.getWriter().write(JsonUtil.error(
@@ -53,8 +53,10 @@ public class ParkingServlet extends BaseServlet {
 
         if ("/entry".equals(path)) {
             handleEntry(req, res);
+
         } else if ("/exit".equals(path)) {
             handleExit(req, res);
+
         } else {
             res.setStatus(404);
             res.getWriter().write(JsonUtil.error(
@@ -68,7 +70,6 @@ public class ParkingServlet extends BaseServlet {
             HttpServletResponse res)
             throws ServletException, IOException {
 
-        // check login
         if (!LoginServlet.isAuthorized(req)) {
             res.setStatus(401);
             res.getWriter().write(JsonUtil.error(
@@ -91,16 +92,93 @@ public class ParkingServlet extends BaseServlet {
         } else if ("/availability/all".equals(path)) {
             handleAvailabilityAll(req, res);
 
+        } else if ("/grid".equals(path)) {
+            handleGrid(req, res);
+
+        } else if ("/floors".equals(path)) {
+            handleFloors(req, res);
+
+        } else if ("/floor-report/all".equals(path)) {
+            handleAllFloorReports(req, res);
+
         } else if (path.startsWith("/history/")) {
             handleHistory(req, res, path);
 
         } else if (path.startsWith("/vehicle/")) {
             handleVehicleLookup(req, res, path);
 
+        } else if ("/occupied".equals(path)) {
+            handleOccupied(req, res);
         } else {
             res.setStatus(404);
             res.getWriter().write(JsonUtil.error(
                     "NOT_FOUND", "Endpoint not found"));
+        }
+
+    }
+
+    // Returns a JSON array of Slot objects for the given floor (manual JSON, no Gson/JsonUtil)
+    private void handleGrid(HttpServletRequest req,
+            HttpServletResponse res) throws IOException {
+        try {
+            int floor = Integer.parseInt(req.getParameter("floor"));
+            com.parking.dao.ParkingDAO dao = (com.parking.dao.ParkingDAO) getServletContext().getAttribute("parkingDAO");
+            List<com.parking.model.Slot> slots = dao.getSlotsByFloorObjects(floor);
+            res.setContentType("application/json");
+            StringBuilder json = new StringBuilder("[");
+            for (int i = 0; i < slots.size(); i++) {
+                com.parking.model.Slot s = slots.get(i);
+                json.append("{")
+                    .append("\"id\":").append(s.id).append(",")
+                    .append("\"vehicleType\":\"").append(s.vehicleType).append("\",")
+                    .append("\"size\":").append(s.size).append(",")
+                    .append("\"slotRow\":").append(s.slotRow).append(",")
+                    .append("\"colStart\":").append(s.colStart)
+                    .append("}");
+                if (i < slots.size() - 1) json.append(",");
+            }
+            json.append("]");
+            res.getWriter().write(json.toString());
+        } catch (Exception e) {
+            res.setStatus(400);
+            res.getWriter().write(com.parking.util.JsonUtil.error(
+                    "INVALID_PARAMS", e.getMessage()));
+        }
+    }
+
+    private void handleFloors(HttpServletRequest req,
+            HttpServletResponse res) throws IOException {
+
+        try {
+            com.parking.dao.ParkingDAO dao =
+                    (com.parking.dao.ParkingDAO) getServletContext()
+                            .getAttribute("parkingDAO");
+
+            List<Integer> floors = dao.getAllFloorNums();
+
+            // FIX: convert List → JSON (no JsonUtil.toJson)
+            res.setStatus(200);
+            res.getWriter().write(floors.toString());
+
+        } catch (Exception e) {
+            res.setStatus(500);
+            res.getWriter().write(
+                    com.parking.util.JsonUtil.error(
+                            "SERVER_ERROR", e.getMessage()));
+        }
+    }
+
+    // Returns a JSON array of occupied slot IDs for the given floor (manual JSON, no Gson/JsonUtil)
+    private void handleOccupied(HttpServletRequest req, HttpServletResponse res) throws IOException {
+        try {
+            int floor = Integer.parseInt(req.getParameter("floor"));
+            com.parking.dao.ParkingDAO dao = (com.parking.dao.ParkingDAO) getServletContext().getAttribute("parkingDAO");
+            List<Integer> occupied = dao.getOccupiedSlots(floor);
+            res.setContentType("application/json");
+            res.getWriter().write(occupied.toString());
+        } catch (Exception e) {
+            res.setStatus(400);
+            res.getWriter().write(com.parking.util.JsonUtil.error("INVALID_PARAMS", e.getMessage()));
         }
     }
 
@@ -114,7 +192,6 @@ public class ParkingServlet extends BaseServlet {
         String floorP = req.getParameter("floor");
         String slotP = req.getParameter("slot_num");
 
-        // parse optional params
         Integer floor = null;
         Integer slotNum = null;
 
@@ -137,23 +214,18 @@ public class ParkingServlet extends BaseServlet {
             Slot slot = service.vehicleEntry(
                     plate, floor, slotNum, type);
 
-            String message = type + " parked at Floor "
-                    + slot.floor + " Slot "
-                    + slot.slotNum + " successfully";
-
             res.setStatus(200);
             res.getWriter().write(JsonUtil.entryResponse(
-                    message,
+                    type + " parked successfully",
                     plate,
                     type,
                     slot.floor,
                     slot.slotNum,
                     slot.id,
-                    java.time.LocalDateTime.now().format(FMT)));
+                    LocalDateTime.now().format(FMT)));
 
         } catch (ParkingException e) {
-            int status = resolveStatus(e.getErrorCode());
-            res.setStatus(status);
+            res.setStatus(resolveStatus(e.getErrorCode()));
             res.getWriter().write(JsonUtil.error(
                     e.getErrorCode(), e.getMessage()));
         }
@@ -173,10 +245,40 @@ public class ParkingServlet extends BaseServlet {
             res.getWriter().write(JsonUtil.billResponse(bill));
 
         } catch (ParkingException e) {
-            int status = resolveStatus(e.getErrorCode());
-            res.setStatus(status);
+            res.setStatus(resolveStatus(e.getErrorCode()));
             res.getWriter().write(JsonUtil.error(
                     e.getErrorCode(), e.getMessage()));
+        }
+    }
+
+    // ── NEW FLOOR REPORT HANDLER ─────────────────────────
+    private void handleAllFloorReports(HttpServletRequest req,
+            HttpServletResponse res)
+            throws IOException {
+
+        try {
+            String fromP = req.getParameter("from");
+            String toP = req.getParameter("to");
+
+            LocalDateTime from = null;
+            LocalDateTime to = null;
+
+            if (fromP != null && !fromP.isBlank()) {
+                from = LocalDate.parse(fromP).atStartOfDay();
+            }
+            if (toP != null && !toP.isBlank()) {
+                to = LocalDate.parse(toP).atStartOfDay();
+            }
+
+            Map<Integer, List<Map<String, Object>>> data = service.getAllFloorReports(from, to);
+
+            res.setStatus(200);
+            res.getWriter().write(JsonUtil.floorReportAllResponse(data));
+
+        } catch (Exception e) {
+            res.setStatus(500);
+            res.getWriter().write(JsonUtil.error(
+                    "SERVER_ERROR", e.getMessage()));
         }
     }
 
@@ -185,19 +287,10 @@ public class ParkingServlet extends BaseServlet {
             HttpServletResponse res)
             throws IOException {
 
-        String floorP = req.getParameter("floor");
-        String type = req.getParameter("vehicle_type");
-
-        if (floorP == null || type == null) {
-            res.setStatus(400);
-            res.getWriter().write(JsonUtil.error(
-                    "INVALID_PARAMS",
-                    "floor and vehicle_type are required"));
-            return;
-        }
-
         try {
-            int floor = Integer.parseInt(floorP.trim());
+            int floor = Integer.parseInt(req.getParameter("floor"));
+            String type = req.getParameter("vehicle_type");
+
             Map<String, Object> result = service.getAvailability(floor, type);
 
             res.setStatus(200);
@@ -207,19 +300,13 @@ public class ParkingServlet extends BaseServlet {
                     (int) result.get("free_count"),
                     (java.util.Collection<Integer>) result.get("free_slots")));
 
-        } catch (NumberFormatException e) {
+        } catch (Exception e) {
             res.setStatus(400);
             res.getWriter().write(JsonUtil.error(
-                    "INVALID_PARAMS", "floor must be an integer"));
-        } catch (ParkingException e) {
-            int status = resolveStatus(e.getErrorCode());
-            res.setStatus(status);
-            res.getWriter().write(JsonUtil.error(
-                    e.getErrorCode(), e.getMessage()));
+                    "INVALID_PARAMS", e.getMessage()));
         }
     }
 
-    // ── AVAILABILITY ALL ─────────────────────────────────
     private void handleAvailabilityAll(HttpServletRequest req,
             HttpServletResponse res)
             throws IOException {
@@ -232,8 +319,7 @@ public class ParkingServlet extends BaseServlet {
                     JsonUtil.allAvailabilityResponse(result));
 
         } catch (ParkingException e) {
-            int status = resolveStatus(e.getErrorCode());
-            res.setStatus(status);
+            res.setStatus(resolveStatus(e.getErrorCode()));
             res.getWriter().write(JsonUtil.error(
                     e.getErrorCode(), e.getMessage()));
         }
@@ -245,15 +331,7 @@ public class ParkingServlet extends BaseServlet {
             String path)
             throws IOException {
 
-        // extract plate from /history/{plate}
         String plate = path.substring("/history/".length());
-
-        if (plate.isBlank()) {
-            res.setStatus(400);
-            res.getWriter().write(JsonUtil.error(
-                    "INVALID_PARAMS", "number_plate is required"));
-            return;
-        }
 
         try {
             List<BillResult> history = service.getParkingHistory(plate);
@@ -263,8 +341,7 @@ public class ParkingServlet extends BaseServlet {
                     JsonUtil.historyResponse(plate, history));
 
         } catch (ParkingException e) {
-            int status = resolveStatus(e.getErrorCode());
-            res.setStatus(status);
+            res.setStatus(resolveStatus(e.getErrorCode()));
             res.getWriter().write(JsonUtil.error(
                     e.getErrorCode(), e.getMessage()));
         }
@@ -276,33 +353,21 @@ public class ParkingServlet extends BaseServlet {
             String path)
             throws IOException {
 
-        // extract plate from /vehicle/{plate}
         String plate = path.substring("/vehicle/".length());
-
-        if (plate.isBlank()) {
-            res.setStatus(400);
-            res.getWriter().write(JsonUtil.error(
-                    "INVALID_PARAMS", "number_plate is required"));
-            return;
-        }
 
         try {
             ActiveVehicle vehicle = service.getVehicleDetails(plate);
 
-            // get slotNum from DAO
             int slotNum = 0;
+
             try {
-                com.parking.model.Slot slot = ((com.parking.dao.ParkingDAO) getServletContext()
-                        .getAttribute("parkingDAO"))
+                Slot slot = ((com.parking.dao.ParkingDAO) getServletContext().getAttribute("parkingDAO"))
                         .getSlotDetails(vehicle.slotId);
 
                 if (slot != null)
                     slotNum = slot.slotNum;
 
-            } catch (java.sql.SQLException ex) {
-                System.err.println(
-                        "[ParkingServlet] Could not get slot details: "
-                                + ex.getMessage());
+            } catch (Exception ignored) {
             }
 
             res.setStatus(200);
@@ -310,35 +375,24 @@ public class ParkingServlet extends BaseServlet {
                     JsonUtil.vehicleResponse(vehicle, slotNum));
 
         } catch (ParkingException e) {
-            int status = resolveStatus(e.getErrorCode());
-            res.setStatus(status);
+            res.setStatus(resolveStatus(e.getErrorCode()));
             res.getWriter().write(JsonUtil.error(
                     e.getErrorCode(), e.getMessage()));
         }
     }
 
-    // ── RESOLVE HTTP STATUS FROM ERROR CODE ──────────────
+    // ── STATUS RESOLVER ──────────────────────────────────
     private int resolveStatus(String code) {
         switch (code) {
             case "UNAUTHORIZED":
                 return 401;
+            case "INVALID_PARAMS":
+                return 400;
             case "FLOOR_BLOCKED":
                 return 403;
             case "VEHICLE_NOT_FOUND":
             case "SLOT_NOT_FOUND":
-            case "FLOOR_NOT_FOUND":
                 return 404;
-            case "VEHICLE_ALREADY_PARKED":
-            case "SLOT_OCCUPIED":
-            case "SLOT_ALREADY_EXISTS":
-            case "FLOOR_ALREADY_EXISTS":
-            case "FLOOR_ALREADY_BLOCKED":
-            case "FLOOR_NOT_BLOCKED":
-                return 409;
-            case "INVALID_PARAMS":
-                return 400;
-            case "DB_ERROR":
-                return 500;
             default:
                 return 500;
         }

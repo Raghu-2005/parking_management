@@ -10,6 +10,23 @@ import java.util.List;
 import java.util.Map;
 
 public class JsonUtil {
+    // Generic toJson for int[][] and other objects (simple, not for production)
+    public static String toJson(int[][] grid) {
+        if (grid == null) return "null";
+        StringBuilder sb = new StringBuilder();
+        sb.append("[");
+        for (int i = 0; i < grid.length; i++) {
+            if (i > 0) sb.append(",");
+            sb.append("[");
+            for (int j = 0; j < grid[i].length; j++) {
+                if (j > 0) sb.append(",");
+                sb.append(grid[i][j]);
+            }
+            sb.append("]");
+        }
+        sb.append("]");
+        return sb.toString();
+    }
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -259,11 +276,12 @@ public class JsonUtil {
     // ── SLOTS RESPONSE ───────────────────────────────────
 
     public static String slotsResponse(int floor,
-            List<Map<String, Object>> slots) {
+            List<Map<String, Object>> slots, int layoutVersion) {
         StringBuilder sb = new StringBuilder();
         sb.append("{")
                 .append("\"status\":\"success\",")
                 .append("\"floor\":").append(floor).append(",")
+                .append("\"layout_version\":").append(layoutVersion).append(",")
                 .append("\"slots\":[");
         for (int i = 0; i < slots.size(); i++) {
             Map<String, Object> s = slots.get(i);
@@ -283,11 +301,59 @@ public class JsonUtil {
             } else {
                 sb.append(",\"number_plate\":null");
             }
+            sb.append(",\"slot_row\":").append(s.get("slot_row"));
+            sb.append(",\"col_start\":").append(s.get("col_start"));
+            sb.append(",\"col_end\":").append(s.get("col_end"));
+            sb.append(",\"size\":").append(s.get("size"));
             sb.append("}");
             if (i < slots.size() - 1)
                 sb.append(",");
         }
         sb.append("]}");
+        return sb.toString();
+    }
+
+    public static String floorReportAllResponse(
+            Map<Integer, List<Map<String, Object>>> data) {
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\"status\":\"success\",\"data\":{");
+
+        boolean firstFloor = true;
+
+        for (Map.Entry<Integer, List<Map<String, Object>>> entry : data.entrySet()) {
+
+            if (!firstFloor)
+                sb.append(",");
+            firstFloor = false;
+
+            int floor = entry.getKey();
+            List<Map<String, Object>> rows = entry.getValue();
+
+            sb.append("\"").append(floor).append("\":[");
+
+            boolean firstRow = true;
+
+            for (Map<String, Object> r : rows) {
+
+                if (!firstRow)
+                    sb.append(",");
+                firstRow = false;
+
+                sb.append("{")
+                        .append("\"vehicle_type\":").append(quote((String) r.get("vehicle_type"))).append(",")
+                        .append("\"total_vehicles\":").append(r.get("total_vehicles")).append(",")
+                        .append("\"total_revenue\":").append(r.get("total_revenue")).append(",")
+                        .append("\"total_penalty\":").append(r.get("total_penalty")).append(",")
+                        .append("\"avg_duration_mins\":").append(r.get("avg_duration_mins")).append(",")
+                        .append("\"max_duration_mins\":").append(r.get("max_duration_mins"))
+                        .append("}");
+            }
+
+            sb.append("]");
+        }
+
+        sb.append("}}");
         return sb.toString();
     }
 

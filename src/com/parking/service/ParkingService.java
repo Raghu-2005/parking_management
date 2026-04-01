@@ -164,6 +164,9 @@ public class ParkingService {
                     vehicle.floor, vehicle.vehicleType, vehicle.slotId);
             store.removeActiveVehicle(plate);
 
+            // Invalidate floor report cache — history table changed
+            store.clearFloorReportCache();
+
             return bill;
 
         } catch (SQLException e) {
@@ -302,15 +305,15 @@ public class ParkingService {
         }
     }
 
-    public List<Map<String, Object>> getSlotsByFloor(int floor)
-            throws ParkingException {
-
+    public List<Map<String, Object>> getSlotsByFloor(int floor) throws ParkingException {
         try {
             return dao.getSlotsByFloor(floor);
-        } catch (SQLException e) {
+        } catch (Exception e) {
             throw new ParkingException(
                     "DB_ERROR",
-                    "Database error: " + e.getMessage(), e);
+                    "Failed to fetch slots: " + e.getMessage()
+
+            );
         }
     }
 
@@ -892,6 +895,244 @@ public class ParkingService {
     // No DB call — loaded at startup.
     public Map<String, Integer> getAllVehicleSizes() {
         return store.getAllVehicleSizes();
+    }
+
+    public Map<Integer, List<Map<String, Object>>> getAllFloorReports(
+            LocalDateTime from,
+            LocalDateTime to) throws SQLException {
+
+        // Build cache key from date range
+        String key = (from != null ? from.toLocalDate() : "null")
+                + ":" + (to != null ? to.toLocalDate() : "null");
+
+        // O(1) cache hit — return immediately, no DB
+        Map<Integer, List<Map<String, Object>>> cached = store.getFloorReport(key);
+        if (cached != null) {
+            return cached;
+        }
+
+        // Cache miss — single DB query for all floors
+        Map<Integer, List<Map<String, Object>>> result = dao.getAllFloorReports(from, to);
+
+        // Compute per-floor grand-total "ALL" summary rows
+        for (Map.Entry<Integer, List<Map<String, Object>>> entry : result.entrySet()) {
+            List<Map<String, Object>> rows = entry.getValue();
+            if (rows.isEmpty())
+                continue;
+
+            // Check if ALL row already exists
+            boolean hasAll = rows.stream()
+                    .anyMatch(r -> "ALL".equals(r.get("vehicle_type")));
+            if (hasAll)
+                continue;
+
+            long grandVehicles = 0;
+            double grandRevenue = 0;
+            double grandPenalty = 0;
+            double grandAvgSum = 0;
+            long grandMax = 0;
+
+            for (Map<String, Object> row : rows) {
+                long tv = ((Number) row.get("total_vehicles")).longValue();
+                double tr = ((Number) row.get("total_revenue")).doubleValue();
+                double tp = ((Number) row.get("total_penalty")).doubleValue();
+                double avg = ((Number) row.get("avg_duration_mins")).doubleValue();
+                long mx = ((Number) row.get("max_duration_mins")).longValue();
+
+                grandVehicles += tv;
+                grandRevenue += tr;
+                grandPenalty += tp;
+                grandAvgSum += avg * tv;
+                if (mx > grandMax)
+                    grandMax = mx;
+            }
+
+            Map<String, Object> total = new HashMap<>();
+            total.put("vehicle_type", "ALL");
+            total.put("total_vehicles", grandVehicles);
+            total.put("total_revenue", Math.round(grandRevenue * 100.0) / 100.0);
+            total.put("total_penalty", Math.round(grandPenalty * 100.0) / 100.0);
+            total.put("avg_duration_mins", grandVehicles > 0
+                    ? Math.round((grandAvgSum / grandVehicles) * 10.0) / 10.0
+                    : 0.0);
+            total.put("max_duration_mins", grandMax);
+            rows.add(total);
+        }
+
+        // Store in cache for next request
+        store.putFloorReport(key, result);
+
+        return result;
+    }
+
+    // ── LAYOUT REMOVAL ───────────────────────────────────
+
+    public Map<String, Object> removeBlock(int floor,
+            int rowStart, int rowEnd, int colStart, int colEnd,
+            String reason, String removedBy) throws ParkingException {
+        try {
+            // Step 1: resolve slot IDs
+            List<Integer> slotIds = dao.resolveBlockSlotIds(
+                floor, rowStart, rowEnd, colStart, colEnd);
+            if (slotIds.isEmpty()) {
+                throw new ParkingException("NOT_FOUND",
+                    "No active slots found in the specified region");
+            }
+            // Step 2: partial overlap check
+            List<Integer> partial = dao.detectPartialOverlap(
+                floor, rowStart, rowEnd, colStart, colEnd);
+            if (!partial.isEmpty()) {
+                Map<String, Object> result = new java.util.LinkedHashMap<>();
+                result.put("success", false);
+                result.put("conflict", "partial_overlap");
+                result.put("details", partial);
+                return result;
+            }
+            // Step 3: active vehicle check
+            Map<Integer, String> active = dao.checkActiveVehiclesInSlots(slotIds);
+            if (!active.isEmpty()) {
+                List<Map<String, Object>> details = new java.util.ArrayList<>();
+                active.forEach((sid, plate) -> {
+                    Map<String, Object> d = new java.util.LinkedHashMap<>();
+                    d.put("slot_id", sid);
+                    d.put("number_plate", plate);
+                    details.add(d);
+                });
+                Map<String, Object> result = new java.util.LinkedHashMap<>();
+                result.put("success", false);
+                result.put("conflict", "active_vehicle");
+                result.put("details", details);
+                return result;
+            }
+            // Step 4: execute removal
+            int versionBefore = dao.getLayoutVersion(floor);
+            int regionId = dao.executeRemoval(floor, rowStart, rowEnd,
+                colStart, colEnd, slotIds, reason, removedBy);
+            Map<String, Object> result = new java.util.LinkedHashMap<>();
+            result.put("success", true);
+            result.put("slots_removed", slotIds.size());
+            result.put("layout_version", versionBefore + 1);
+            result.put("removed_region_id", regionId);
+            result.put("conflict", null);
+            return result;
+        } catch (ParkingException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ParkingException("DB_ERROR",
+                "Layout removal failed: " + e.getMessage());
+        }
+    }
+
+    public Map<String, Object> removeSlots(int floor,
+            List<Integer> slotIds, String reason, String removedBy) throws ParkingException {
+        try {
+            // Validate slot IDs
+            List<Integer> invalid = dao.validateSlotIds(floor, slotIds);
+            if (!invalid.isEmpty()) {
+                throw new ParkingException("NOT_FOUND",
+                    "Slot IDs not found or already inactive: " + invalid);
+            }
+            // Active vehicle check
+            Map<Integer, String> active = dao.checkActiveVehiclesInSlots(slotIds);
+            if (!active.isEmpty()) {
+                List<Map<String, Object>> details = new java.util.ArrayList<>();
+                active.forEach((sid, plate) -> {
+                    Map<String, Object> d = new java.util.LinkedHashMap<>();
+                    d.put("slot_id", sid);
+                    d.put("number_plate", plate);
+                    details.add(d);
+                });
+                Map<String, Object> result = new java.util.LinkedHashMap<>();
+                result.put("success", false);
+                result.put("conflict", "active_vehicle");
+                result.put("details", details);
+                return result;
+            }
+            // Execute removal
+            int versionBefore = dao.getLayoutVersion(floor);
+            int regionId = dao.executeRemoval(floor, null, null,
+                null, null, slotIds, reason, removedBy);
+            Map<String, Object> result = new java.util.LinkedHashMap<>();
+            result.put("success", true);
+            result.put("slots_removed", slotIds.size());
+            result.put("layout_version", versionBefore + 1);
+            result.put("removed_region_id", regionId);
+            result.put("conflict", null);
+            return result;
+        } catch (ParkingException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ParkingException("DB_ERROR",
+                "Layout removal failed: " + e.getMessage());
+        }
+    }
+
+    public List<Map<String, Object>> getRemovalHistory(int floor) throws ParkingException {
+        try {
+            return dao.getRemovalHistory(floor);
+        } catch (Exception e) {
+            throw new ParkingException("DB_ERROR",
+                "Failed to fetch removal history: " + e.getMessage());
+        }
+    }
+
+
+    // ── LAYOUT REMOVAL ───────────────────────────────────
+
+
+    // LAYOUT ROLLBACK
+
+    public Map<String, Object> rollbackBlock(int floor, int rowStart, int rowEnd,
+            int colStart, int colEnd, String restoredBy) throws ParkingException {
+        try {
+            List<Integer> slotIds = dao.resolveRemovedBlockSlots(floor, rowStart, rowEnd, colStart, colEnd);
+            if (slotIds.isEmpty()) {
+                throw new ParkingException("NOT_FOUND", "No removed slots found in the specified region");
+            }
+            int regionId = dao.executeRollback(floor, slotIds, restoredBy);
+            Map<String, Object> result = new java.util.LinkedHashMap<>();
+            result.put("success", true);
+            result.put("slots_restored", slotIds.size());
+            result.put("slot_ids", slotIds);
+            result.put("region_id", regionId);
+            result.put("layout_version", dao.getLayoutVersion(floor));
+            return result;
+        } catch (ParkingException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ParkingException("DB_ERROR", "Rollback failed: " + e.getMessage());
+        }
+    }
+
+    public Map<String, Object> rollbackSlots(int floor, List<Integer> slotIds,
+            String restoredBy) throws ParkingException {
+        try {
+            List<Integer> invalid = dao.validateRemovedSlotIds(floor, slotIds);
+            if (!invalid.isEmpty()) {
+                throw new ParkingException("INVALID_SLOTS",
+                    "Slots not found or not removed: " + invalid);
+            }
+            int regionId = dao.executeRollback(floor, slotIds, restoredBy);
+            Map<String, Object> result = new java.util.LinkedHashMap<>();
+            result.put("success", true);
+            result.put("slots_restored", slotIds.size());
+            result.put("slot_ids", slotIds);
+            result.put("region_id", regionId);
+            result.put("layout_version", dao.getLayoutVersion(floor));
+            return result;
+        } catch (ParkingException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ParkingException("DB_ERROR", "Rollback failed: " + e.getMessage());
+        }
+    }
+
+    public List<Map<String, Object>> getRemovedSlotsByFloor(int floor) throws ParkingException {
+        try {
+            return dao.getRemovedSlotsByFloor(floor);
+        } catch (Exception e) {
+            throw new ParkingException("DB_ERROR", "Failed to fetch removed slots: " + e.getMessage());
+        }
     }
 
 }

@@ -153,6 +153,17 @@ public class AppInitializer implements ServletContextListener {
             System.out.println("[App] Built grid for " + floorConfigs.size()
                     + " floor(s), " + gridSlotCount + " slots");
 
+            // ── Step 11: pre-load floor report cache
+            /*
+             * try {
+             * service.getAllFloorReports(null, null);
+             * System.out.println("[App] Floor report cache pre-loaded");
+             * } catch (Exception e) {
+             * System.err.println("[App] WARN — floor report cache pre-load failed: "
+             * + e.getMessage());
+             * }
+             */
+
             System.out.println("[App] Parking System started successfully");
 
         } catch (SQLException e) {

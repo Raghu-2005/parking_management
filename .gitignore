@@ -1,0 +1,21 @@
+# Compiled files
+*.class
+*.war
+*.jar
+
+# Build output
+out/
+
+# Database dumps (sensitive)
+*.sql
+
+# Cookies and session data
+cookies.txt
+
+# IDE files
+.vscode/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
