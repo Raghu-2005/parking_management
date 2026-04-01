@@ -1502,13 +1502,16 @@ public class AdminServlet extends BaseServlet {
         } else {
             sb.append("\"conflict\":").append(lqQuote(r.get("conflict").toString())).append(",");
         }
-        if (r.containsKey("slots_removed")) {
-            sb.append("\"slots_removed\":").append(r.get("slots_removed")).append(",");
+        if (r.containsKey("slots_removed") || r.containsKey("slots_restored")) {
+            int count = r.containsKey("slots_removed")
+                ? (int) r.get("slots_removed")
+                : (r.containsKey("slots_restored") ? (int) r.get("slots_restored") : 0);
+            sb.append("\"slots_removed\":").append(count).append(",");
             sb.append("\"layout_version\":").append(r.get("layout_version")).append(",");
-            sb.append("\"removed_region_id\":").append(r.get("removed_region_id"));
+            sb.append("\"removed_region_id\":").append(r.getOrDefault("removed_region_id", r.getOrDefault("region_id", 0)));
         } else {
             @SuppressWarnings("unchecked")
-            List<?> details = (List<?>) r.get("details");
+            List<?> details = r.get("details") != null ? (List<?>) r.get("details") : new java.util.ArrayList<>();
             sb.append("\"details\":[");
             for (int i = 0; i < details.size(); i++) {
                 @SuppressWarnings("unchecked")

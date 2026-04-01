@@ -3093,7 +3093,7 @@
             try {
                 var r = await api('POST', 'admin/layout/rollback/block', { floor_num: layoutFloor, row_start: rs, row_end: re, col_start: cs, col_end: ce });
                 if (r.ok && r.data.success) {
-                    setResult('rb-blk-result','Done! ' + r.data.slots_restored + ' slot(s) restored. Version: ' + r.data.layout_version, false);
+                    setResult('rb-blk-result','Done! ' + r.data.slots_removed + ' slot(s) restored. Version: ' + r.data.layout_version, false);
                     document.getElementById('rb-blk-confirm-btn').style.display = 'none';
                     document.getElementById('rb-blk-cancel-btn').style.display = 'none';
                     rbPreviewSlots.clear();
@@ -3141,7 +3141,7 @@
                 console.log('rollback slot_ids:', slotIdsStr, 'rbSelected:', rbSelected.size);
                 var r = await api('POST', 'admin/layout/rollback/slots', { floor_num: layoutFloor, slot_ids: slotIdsStr });
                 if (r.ok && r.data.success) {
-                    setResult('rb-arb-result','Done! ' + r.data.slots_restored + ' slot(s) restored. Version: ' + r.data.layout_version, false);
+                    setResult('rb-arb-result','Done! ' + r.data.slots_removed + ' slot(s) restored. Version: ' + r.data.layout_version, false);
                     ['rb-arb-confirm-btn','rb-arb-cancel-btn'].forEach(function(id){ document.getElementById(id).style.display='none'; });
                     rbSelected.clear(); rbPreviewSlots.clear();
                     rbSlots = []; renderRbGrid();
