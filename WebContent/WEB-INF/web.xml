@@ -15,12 +15,12 @@
 
 <context-param>
     <param-name>db.username</param-name>
-    <param-value>postgres</param-value>
+    <param-value>""</param-value>
 </context-param>
 
 <context-param>
     <param-name>db.password</param-name>
-    <param-value>postgres123</param-value>
+    <param-value>""</param-value>
 </context-param>
 
 <context-param>
